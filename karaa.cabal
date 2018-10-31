@@ -1,0 +1,57 @@
+cabal-version:       2.0
+
+name:                karaa
+version:             0.1.0.0
+synopsis:            A GameBoy Color emulator in Haskell
+-- description:
+homepage:            https://github.com/typedrat/karaa
+license:             MPL-2.0
+license-file:        LICENSE
+author:              Alexis Williams
+maintainer:          alexis@typedr.at
+-- copyright:
+category:            Game
+build-type:          Simple
+extra-source-files:  CHANGELOG.md
+
+library
+  exposed-modules:    Karaa.App.Config
+                    , Karaa.CPU.Instructions
+                    , Karaa.CPU.Monad
+                    , Karaa.CPU.Registers
+
+  other-modules:      Karaa.CPU.Instructions.Demote
+                    , Karaa.CPU.Instructions.Instances
+                    , Karaa.CPU.Instructions.Instruction
+                    , Karaa.CPU.Instructions.Types
+                    , Karaa.CPU.Monad.Internal
+                    , Karaa.RAM.Access
+                    , Karaa.RAM.Types
+  -- other-extensions:
+  build-depends:       base           >= 4.9 && < 5
+                     , microlens     ^>= 0.4.9.1
+                     , mtl           ^>= 2.2.2
+                     , microlens-mtl ^>= 0.1.11
+                     , vector        ^>= 0.12.0.1
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  default-extensions:  DataKinds
+                     , DeriveFunctor
+                     , FlexibleInstances
+                     , GADTs
+                     , GeneralizedNewtypeDeriving
+                     , MultiParamTypeClasses
+                     , NamedFieldPuns
+                     , RankNTypes
+                     , RecordWildCards
+                     , ScopedTypeVariables
+                     , TypeFamilies
+                     , TypeInType
+                     , TypeOperators
+executable karaa
+  main-is:             Main.hs
+  -- other-modules:
+  -- other-extensions:
+  build-depends:       base >=4.11 && <4.12
+  hs-source-dirs:      src
+  default-language:    Haskell2010
