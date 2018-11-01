@@ -215,6 +215,22 @@ instance DemoteWRegister SP where
 
 instance DemoteWRegister PC where
     demoteWRegister _ = PC
+--
+
+class DemoteFlag (f :: Flag) where
+    demoteFlag :: Proxy f -> Flag
+
+instance DemoteFlag Z_ where
+    demoteFlag _ = Z_
+
+instance DemoteFlag C_ where
+    demoteFlag _ = C_
+
+instance DemoteFlag NZ_ where
+    demoteFlag _ = NZ_
+
+instance DemoteFlag NC_ where
+    demoteFlag _ = NC_
 
 --
 
@@ -249,3 +265,6 @@ instance DemoteArgument Const_16b where
 
 instance (DemoteArgument a) => DemoteArgument (Indirect a) where
     demoteArgument (_ :: Proxy (Indirect a)) = Indirect $ demoteArgument (Proxy :: Proxy a)
+
+instance (DemoteFlag f) => DemoteArgument (Condition f) where
+    demoteArgument (_ :: Proxy (Condition f)) = Condition $ demoteFlag (Proxy :: Proxy f)
