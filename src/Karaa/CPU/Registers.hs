@@ -19,6 +19,8 @@ import Lens.Micro
 import Numeric
     ( showHex )
 
+import Karaa.Util
+
 newtype Flags = Flags { _unFlags :: Word8 }
               deriving (Eq)
 
@@ -86,14 +88,6 @@ hlReg = lens (\Registers { hl } -> hl) (\r hl -> r { hl })
 pcReg = lens (\Registers { pc } -> pc) (\r pc -> r { pc })
 spReg = lens (\Registers { sp } -> sp) (\r sp -> r { sp })
 
-lower, upper :: Lens' Word16 Word8
-lower = lens
-    fromIntegral
-    (\w16 w8 -> (w16 .&. 0xFF00) .|. fromIntegral w8)
-upper = lens
-    (fromIntegral . (`shiftR` 8))
-    (\w16 w8 -> (w16 .&. 0x00FF) .|. (fromIntegral w8 `shiftL` 8))
-    
 aReg, fReg, bReg, cReg, dReg, eReg, hReg, lReg :: Lens' Registers Word8
 aReg = afReg . upper
 fReg = afReg . lower
