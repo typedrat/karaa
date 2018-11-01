@@ -1,2 +1,3 @@
 dist*/
 .ghc.environment*
+.DS_Store
