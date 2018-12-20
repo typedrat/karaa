@@ -1,3 +1,5 @@
 dist*/
 .ghc.environment*
 .DS_Store
+data/bootroms/*
+!.keep
