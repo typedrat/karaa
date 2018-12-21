@@ -3,43 +3,57 @@ cabal-version:       2.0
 name:                karaa
 version:             0.1.0.0
 synopsis:            A GameBoy Color emulator in Haskell
--- description:
+description:         See README.md <https://github.com/typedrat/karaa/blob/master/README.md>
 homepage:            https://github.com/typedrat/karaa
 license:             MPL-2.0
 license-file:        LICENSE
 author:              Alexis Williams
 maintainer:          alexis@typedr.at
--- copyright:
+copyright:           © 2018 Alexis Williams
 category:            Game
 build-type:          Simple
 extra-source-files:  CHANGELOG.md
 
+source-repository head
+  type: git
+  location: git://git@github.com:typedrat/karaa.git
+
 library
-  exposed-modules:    Karaa.App.Config
-                    , Karaa.CPU.Instructions
-                    , Karaa.CPU.Monad
+  exposed-modules:    Karaa.CPU.Instructions
                     , Karaa.CPU.Registers
-                    , Karaa.RAM
+                    , Karaa.Monad
+                    , Karaa.Memory
                     , Karaa.Util
 
-  other-modules:      Karaa.CPU.Instructions.Demote
-                    , Karaa.CPU.Instructions.Instances
-                    , Karaa.CPU.Instructions.Instruction
+  other-modules:      Karaa.CPU.Instructions.Instances
                     , Karaa.CPU.Instructions.Types
-                    , Karaa.CPU.Monad.Internal
-                    , Karaa.RAM.Access
-                    , Karaa.RAM.Types
+                    , Karaa.CPU.Instructions.Types.Demote
+                    , Karaa.Monad.Config
+                    , Karaa.Monad.Error
+                    , Karaa.Monad.Internal
+                    , Karaa.Memory.Access
+                    , Karaa.Memory.BootROM
+                    , Karaa.Memory.Cartridge
+                    , Karaa.Memory.Initialize
+                    , Karaa.Memory.Types
   -- other-extensions:
-  build-depends:       base           >= 4.9 && < 5
-                     , microlens     ^>= 0.4.9.1
-                     , mtl           ^>= 2.2.2
-                     , microlens-mtl ^>= 0.1.11
-                     , vector        ^>= 0.12.0.1
-                     , microlens-th  ^>= 0.4.2.3
+  build-depends:       base                 >= 4.9 && < 5
+                     , template-haskell
+                     , mtl                  ^>= 2.2.2
+                     , microlens            ^>= 0.4.9.1
+                     , microlens-mtl        ^>= 0.1.11
+                     , microlens-th         ^>= 0.4.2.3
+                     , vector               ^>= 0.12.0.1
+                     , bytestring           ^>= 0.10.8.2
+                     , file-embed           ^>= 0.0.11
+                     , store                ^>= 0.5.0.1
+                     , SHA                  ^>= 1.6.4.4
+                     , first-class-families ^>= 0.3.0.1
   hs-source-dirs:      src
   default-language:    Haskell2010
   default-extensions:  DataKinds
                      , DeriveFunctor
+                     , FlexibleContexts
                      , FlexibleInstances
                      , GADTs
                      , GeneralizedNewtypeDeriving
@@ -47,12 +61,16 @@ library
                      , MultiParamTypeClasses
                      , MultiWayIf
                      , NamedFieldPuns
+                     , NoMonomorphismRestriction
                      , RankNTypes
                      , RecordWildCards
                      , ScopedTypeVariables
+                     , StandaloneDeriving
                      , TypeFamilies
+                     , TypeFamilyDependencies
                      , TypeInType
                      , TypeOperators
+                     , UndecidableInstances
 executable karaa
   main-is:             Main.hs
   -- other-modules:

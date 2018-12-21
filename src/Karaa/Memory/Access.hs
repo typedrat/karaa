@@ -1,29 +1,37 @@
-module Karaa.RAM.Access ( readRAM, writeRAM ) where
+module Karaa.Memory.Access ( readRAM, readRAM', writeRAM, writeRAM' ) where
 
 import Control.Monad.IO.Class
+import Control.Monad.Except
 import Data.Bits
 import qualified Data.Vector.Unboxed.Mutable as MV
 import Data.Word
 import Lens.Micro
 import Lens.Micro.Mtl
 
-import Karaa.App.Config
-import Karaa.CPU.Monad.Internal
-import Karaa.RAM.Types
+import Karaa.Monad.Config
+import Karaa.Monad.Error
+import Karaa.Monad.Internal
+import Karaa.Memory.Types
 import Karaa.Util
 
 --
 
-readMBC :: Word16 -> CPU Word8
+checked :: Word16 -> Maybe (IO a) -> Karaa a
+checked _   (Just m) = ioToKaraa m
+checked addr Nothing = throwError (InvalidMemoryAccess addr)
+
+--
+
+readMBC :: Word16 -> Karaa Word8
 readMBC addr = 
-    use (memoryMap . cartridge) >>= ioToCPU . \case
+    use (memoryMap . cartridge) >>= checked addr . \case
         (NoMBC rom ram)
             | addr <= 0x7FFF -> readMemory rom addr
             | otherwise      -> readMemory ram (addr - 0xA000)
 
-writeMBC :: Word16 -> Word8 -> CPU ()
+writeMBC :: Word16 -> Word8 -> Karaa ()
 writeMBC addr byte =
-    use (memoryMap . cartridge) >>= ioToCPU . \case
+    use (memoryMap . cartridge) >>= checked addr . \case
         (NoMBC rom ram)
             | addr <= 0x7FFF -> writeMemory rom  addr           byte
             | otherwise      -> writeMemory ram (addr - 0xA000) byte
@@ -31,17 +39,17 @@ writeMBC addr byte =
 
 --
 
-readVRAM :: Word16 -> CPU Word8
+readVRAM :: Word16 -> Karaa Word8
 readVRAM addr = 
-    use (memoryMap . vram) >>= ioToCPU . \vram -> do
+    use (memoryMap . vram) >>= checked addr . \vram -> do
         let ram = vram ^. vramRAM
             bank = vram ^. vramBank
             idx = addr - 0x8000 + (bank * 0x2000)
         readMemory ram idx
 
-writeVRAM :: Word16 -> Word8 -> CPU ()
+writeVRAM :: Word16 -> Word8 -> Karaa ()
 writeVRAM addr byte = 
-    use (memoryMap . vram) >>= ioToCPU . \vram -> do
+    use (memoryMap . vram) >>= checked addr . \vram -> do
         let ram = vram ^. vramRAM
             bank = vram ^. vramBank
             idx = addr - 0x8000 + (bank * 0x2000)
@@ -49,7 +57,7 @@ writeVRAM addr byte =
 
 --
 
-readWRAM :: Word16 -> CPU Word8
+readWRAM :: Word16 -> Karaa Word8
 readWRAM addr =
     use (memoryMap . wram) >>= \wram -> do
         let ram = wram ^. wramRAM
@@ -57,10 +65,10 @@ readWRAM addr =
             idx i = if | i <= 0xCFFF -> i - 0xC000
                        | i <= 0xDFFF -> i - 0xD000 + (bank * 0x1000)
                        | otherwise   -> idx (i - 0x2000)
-        ioToCPU $ readMemory ram (idx addr)
+        checked addr $ readMemory ram (idx addr)
 
 
-writeWRAM :: Word16 -> Word8 -> CPU ()
+writeWRAM :: Word16 -> Word8 -> Karaa ()
 writeWRAM addr byte =
     use (memoryMap . wram) >>= \wram -> do
         let ram = wram ^. wramRAM
@@ -68,23 +76,23 @@ writeWRAM addr byte =
             idx i = if | i <= 0xCFFF -> i - 0xC000
                        | i <= 0xDFFF -> i - 0xD000 + (bank * 0x1000)
                        | otherwise   -> idx (i - 0x2000)
-        ioToCPU $ writeMemory ram (idx addr) byte
+        checked addr $ writeMemory ram (idx addr) byte
 
 --
 
-readOAM :: Word16 -> CPU Word8
+readOAM :: Word16 -> Karaa Word8
 readOAM addr = 
-    use (memoryMap . oam . oamRAM) >>= ioToCPU . \ram ->
+    use (memoryMap . oam . oamRAM) >>= checked addr . \ram ->
         readMemory ram (addr - 0xFE00)
 
-writeOAM :: Word16 -> Word8 -> CPU ()
+writeOAM :: Word16 -> Word8 -> Karaa ()
 writeOAM addr byte =
-    use (memoryMap . oam . oamRAM) >>= ioToCPU . \ram ->
+    use (memoryMap . oam . oamRAM) >>= checked addr . \ram ->
         writeMemory ram (addr - 0xFE00) byte
 
 --
 
-addrToLens :: Functor f => Word16 -> CPU ((Word8 -> f Word8) -> CPUState -> f CPUState)
+addrToLens :: Functor f => Word16 -> Karaa ((Word8 -> f Word8) -> KaraaState -> f KaraaState)
 addrToLens addr = do
     mode <- view gameboyMode
 
@@ -96,7 +104,9 @@ addrToLens addr = do
         lcd = io . ioLCDController
         dma = io . ioDMAController
         cgb = io . ioCGBRegisters
-        isCGB = mode == GBCWithGBCGame
+        isCGB 
+            | GBC _ <- mode = True
+            | otherwise = False
 
     case addr of
         0xFF00 -> return $ joy . joyRegister
@@ -167,46 +177,54 @@ addrToLens addr = do
         0xFF76 -> return $ cgb . cgbFF76
         0xFF77 -> return $ cgb . cgbFF77
 
-        _ -> return (lens (const 0x00) const)
+        _ -> return (lens (const 0xFF) const)
 
-readIORegs :: Word16 -> CPU Word8
+readIORegs :: Word16 -> Karaa Word8
 readIORegs addr 
     | 0xFF30 <= addr && addr <= 0xFF3F = do
         samples <- use (memoryMap . ioRegs . ioSoundController . sndChan3Samples)
-        ioToCPU $ readMemory samples (addr - 0xFF30)
+        checked addr $ readMemory samples (addr - 0xFF30)
     | otherwise = use =<< addrToLens addr
 
-writeIORegs :: Word16 -> Word8 -> CPU ()
+writeIORegs :: Word16 -> Word8 -> Karaa ()
 writeIORegs addr byte
     | 0xFF30 <= addr && addr <= 0xFF3F = do
-        samples <- use (memoryMap . ioRegs . ioSoundController . sndChan3Samples)
-        ioToCPU $ writeMemory samples (addr - 0xFF30) byte
-    | otherwise = (.= byte) =<< addrToLens addr
+        let io = memoryMap . ioRegs
+        samples <- use (io . ioSoundController . sndChan3Samples)
+        io . ioRegsDirtyAddr .= Just addr
+        checked addr $ writeMemory samples (addr - 0xFF30) byte
+    | otherwise = do 
+        let io = memoryMap . ioRegs
+        io . ioRegsDirtyAddr .= Just addr
+        reg <- addrToLens addr
+        reg .= byte
 
 --
 
-readHRAM :: Word16 -> CPU Word8
+readHRAM :: Word16 -> Karaa Word8
 readHRAM addr = 
-    use (memoryMap . hram . hramRAM) >>= ioToCPU . \ram ->
+    use (memoryMap . hram . hramRAM) >>= checked addr . \ram ->
         readMemory ram (addr - 0xFF80)
 
-writeHRAM :: Word16 -> Word8 -> CPU ()
+writeHRAM :: Word16 -> Word8 -> Karaa ()
 writeHRAM addr byte =
-    use (memoryMap . hram . hramRAM) >>= ioToCPU . \ram ->
+    use (memoryMap . hram . hramRAM) >>= checked addr . \ram ->
         writeMemory ram (addr - 0xFF80) byte
 
 --
 
-readIE :: CPU Word8
+readIE :: Karaa Word8
 readIE = use (memoryMap . ioRegs . ioInterruptController . intEnable)
 
-writeIE :: Word8 -> CPU ()
+writeIE :: Word8 -> Karaa ()
 writeIE = (memoryMap . ioRegs . ioInterruptController . intEnable .=)
 
 --
 
-readRAM :: Word16 -> CPU Word8
-readRAM addr
+readRAM, readRAM' :: Word16 -> Karaa Word8
+readRAM = tick . readRAM'
+
+readRAM' addr
     | addr <= 0x7FFF = readMBC addr
     | addr <= 0x9FFF = readVRAM addr
     | addr <= 0xBFFF = readMBC addr
@@ -216,8 +234,10 @@ readRAM addr
     | addr <= 0xFFFE = readHRAM addr
     | otherwise      = readIE
 
-writeRAM :: Word16 -> Word8 -> CPU ()
-writeRAM addr byte
+writeRAM, writeRAM' :: Word16 -> Word8 -> Karaa ()
+writeRAM addr = tick . writeRAM' addr
+
+writeRAM' addr byte
     | addr <= 0x7FFF = writeMBC addr byte
     | addr <= 0x9FFF = writeVRAM addr byte
     | addr <= 0xBFFF = writeMBC addr byte
