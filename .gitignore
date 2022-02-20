@@ -1,4 +1,5 @@
 dist*/
+cabal.project.local
 .ghc.environment*
 .DS_Store
 bootroms/*

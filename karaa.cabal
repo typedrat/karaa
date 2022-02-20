@@ -19,14 +19,41 @@ source-repository head
   location: git://git@github.com:typedrat/karaa.git
 
 library
-  build-depends:       base >= 4.14 && < 5
+  exposed-modules:     Karaa.CPU.Instructions.Decode
+                     , Karaa.CPU.Instructions.Mnemonic
+                     , Karaa.CPU.Instructions.Operand
+                     , Karaa.CPU.Instructions.Types
+                     , Karaa.CPU.Registers
+                     , Karaa.Util.BitInByte
+                     , Karaa.Util.ByteLenses
+                     , Karaa.Util.Hex
+
+  build-depends:       base           >= 4.14  && < 5
+                     , lens          ^>= 5.1
+                     , prettyprinter ^>= 1.7.1
   hs-source-dirs:      src
   default-language:    Haskell2010
+  default-extensions:  BinaryLiterals
+                     , DataKinds
+                     , GADTs
+                     , GeneralizedNewtypeDeriving
+                     , KindSignatures
+                     , NumericUnderscores
+                     , OverloadedStrings
+                     , PatternSynonyms
+                     , RankNTypes
+                     , ScopedTypeVariables
+                     , StandaloneDeriving
+  other-extensions:    NamedFieldPuns
+  ghc-options:         -O2 -Wall
+  ghc-options:         -ddump-simpl -dsuppress-all -ddump-to-file
 
 executable karaa
   main-is:             Main.hs
   -- other-modules:
   -- other-extensions:
   build-depends:       base >= 4.14 && < 5
+                     , lens
+                     , karaa
   hs-source-dirs:      app
   default-language:    Haskell2010
