@@ -49,7 +49,6 @@ library
                      , StandaloneDeriving
   other-extensions:    NamedFieldPuns
   ghc-options:         -O2 -Wall
-  ghc-options:         -ddump-simpl -dsuppress-all -ddump-to-file
 
 executable karaa
   main-is:             Main.hs
