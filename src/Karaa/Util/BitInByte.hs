@@ -1,15 +1,13 @@
 module Karaa.Util.BitInByte ( BitInByte( Bit0, Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7, rawBitInByte ) ) where
 
-import Prettyprinter ( Pretty(..) )
+import Control.DeepSeq ( NFData )
+import Prettyprinter   ( Pretty )
 
 newtype BitInByte = BitInByte { rawBitInByte :: Int }
-                  deriving (Eq)
+                  deriving (Eq, Pretty, NFData)
 
 instance Show BitInByte where
     show (BitInByte n) = "Bit" ++ show n
-
-instance Pretty BitInByte where
-    pretty = pretty . rawBitInByte
 
 pattern Bit0, Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7 :: BitInByte
 pattern Bit0 = BitInByte 0

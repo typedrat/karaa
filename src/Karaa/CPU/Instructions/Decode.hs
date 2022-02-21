@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-module Karaa.CPU.Instructions.Decode ( decodeInstruction, decodeCBInstruction ) where
+module Karaa.CPU.Instructions.Decode ( decodeInstruction, decodeCBInstruction, forceDecoderTables ) where
 
+import           Control.DeepSeq                ( rnf )
+import           Control.Exception              ( evaluate )
 import           Data.Bits                      ( shiftL, (.|.) )
 import           Data.Vector                    ( (!) )
 import qualified Data.Vector                    as V
@@ -13,10 +15,16 @@ import           Karaa.CPU.Registers            ( Register(..), WideRegister(..)
 import           Karaa.Util.BitInByte           ( BitInByte(..) )
 
 decodeInstruction :: Word8 -> Instruction
-decodeInstruction opcode = instructions ! fromIntegral opcode
+decodeInstruction opcode = instructions `V.unsafeIndex` fromIntegral opcode
 
 decodeCBInstruction :: Word8 -> CBInstruction
-decodeCBInstruction opcode = cbInstructions ! fromIntegral opcode
+decodeCBInstruction opcode = cbInstructions `V.unsafeIndex` fromIntegral opcode
+
+-- | Ensures that the instruction table CAFs are already forced.
+forceDecoderTables :: IO ()
+forceDecoderTables = do
+    evaluate $ rnf instructions
+    evaluate $ rnf cbInstructions
 
 --
 
@@ -28,8 +36,8 @@ instructions = V.create $ do
 
 cbInstructions :: V.Vector CBInstruction
 cbInstructions = V.create $ do
-    v <- MV.new 256
-    mapM_ (uncurry (MV.write v)) (fromXYZ makeCBInstruction <$> [0..3] <*> [0..7] <*> [0..7]) 
+    v <- MV.unsafeNew 256
+    mapM_ (uncurry (MV.unsafeWrite v)) (fromXYZ makeCBInstruction <$> [0..3] <*> [0..7] <*> [0..7]) 
     return v
 
 makeInstruction :: Int -> Int -> Int -> Instruction

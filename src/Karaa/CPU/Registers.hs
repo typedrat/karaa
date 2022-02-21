@@ -10,6 +10,7 @@ module Karaa.CPU.Registers ( RegisterFile()
                            , flag
                            ) where
 
+import Control.DeepSeq       ( NFData(..), rwhnf )
 import Control.Lens.Lens     ( Lens', lens )
 import Data.Bits             ( (.&.), testBit )
 import Data.Bits.Lens        ( bitAt )
@@ -35,25 +36,6 @@ data RegisterFile = RegisterFile { regAF, regBC
                                  , regPC, regSP :: {-# UNPACK #-} !Word16
                                  }
                   deriving (Eq)
-
-instance Show RegisterFile where
-    show RegisterFile{..} = intercalate ", "
-        [ "AF = "    <> showHex regAF
-        , "BC = "    <> showHex regBC
-        , "DE = "    <> showHex regDE
-        , "HL = "    <> showHex regHL
-        , "PC = "    <> showHex regPC
-        , "SP = "    <> showHex regSP
-        , "Flags = " <> showFlags regAF
-        ]
-
-showFlags :: Word16 -> String
-showFlags w16 = zipWith go flags "znhc"
-    where
-        flags = testBit w16 <$> [7, 6, 5, 4]
-
-        go True  c = toUpper c
-        go False c = c
 
 makeRegisterFile :: Word16 -> Word16 -> Word16 -> Word16 -> Word16 -> Word16 -> RegisterFile
 makeRegisterFile = RegisterFile
@@ -88,14 +70,42 @@ flag Carry       = register F . bitAt 4
 
 --
 
+instance NFData Register where
+    rnf = rwhnf
+
 instance Pretty Register where
     pretty = unsafeViaShow
 
+instance NFData WideRegister where
+    rnf = rwhnf
+
 instance Pretty WideRegister where
     pretty = unsafeViaShow
+
+instance NFData Flag where
+    rnf = rwhnf
 
 instance Pretty Flag where
     pretty Zero        = "Z"
     pretty Subtraction = "N"
     pretty HalfCarry   = "H"
     pretty Carry       = "C"
+
+instance Show RegisterFile where
+    show RegisterFile{..} = intercalate ", "
+        [ "AF = "    <> showHex regAF
+        , "BC = "    <> showHex regBC
+        , "DE = "    <> showHex regDE
+        , "HL = "    <> showHex regHL
+        , "PC = "    <> showHex regPC
+        , "SP = "    <> showHex regSP
+        , "Flags = " <> showFlags regAF
+        ]
+
+showFlags :: Word16 -> String
+showFlags w16 = zipWith go flags "znhc"
+    where
+        flags = testBit w16 <$> [7, 6, 5, 4]
+
+        go True  c = toUpper c
+        go False c = c

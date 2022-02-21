@@ -1,5 +1,6 @@
 module Karaa.CPU.Instructions.Operand ( AddressMode(..), Mutability(..), Operand(..) ) where
 
+import Control.DeepSeq     ( NFData(..), rwhnf )
 import Data.Kind           ( Type )
 import Data.Int            ( Int8 )
 import Data.Word           ( Word8, Word16 )
@@ -13,21 +14,24 @@ data AddressMode = PostIncrement | PostDecrement
 data Mutability = RW | RO
 
 data Operand (mut :: Mutability) (a :: Type) where
-    Register         :: Register                          -> Operand 'RW Word8
-    WideRegister     :: WideRegister                      -> Operand 'RW Word16
-    Flag             :: Flag                              -> Operand 'RW Bool
-    NotFlag          :: Flag                              -> Operand 'RW Bool
-    ImmediateWord8   ::                                      Operand 'RO Word8
-    ImmediateInt8    ::                                      Operand 'RO Int8
-    ImmediateWord16  ::                                      Operand 'RO Word16
-    Indirect         :: Operand mut Word16                -> Operand 'RW Word8
-    IndirectWord16   :: Operand mut Word16                -> Operand 'RW Word16
-    IndirectWithMode :: Operand 'RW Word16 -> AddressMode -> Operand 'RW Word8
-    HimemIndirect    :: Operand mut Word8                 -> Operand 'RW Word8
+    Register         :: !Register                             -> Operand 'RW Word8
+    WideRegister     :: !WideRegister                         -> Operand 'RW Word16
+    Flag             :: !Flag                                 -> Operand 'RW Bool
+    NotFlag          :: !Flag                                 -> Operand 'RW Bool
+    ImmediateWord8   ::                                          Operand 'RO Word8
+    ImmediateInt8    ::                                          Operand 'RO Int8
+    ImmediateWord16  ::                                          Operand 'RO Word16
+    Indirect         :: !(Operand mut Word16)                 -> Operand 'RW Word8
+    IndirectWord16   :: !(Operand mut Word16)                 -> Operand 'RW Word16
+    IndirectWithMode :: !(Operand 'RW Word16) -> !AddressMode -> Operand 'RW Word8
+    HimemIndirect    :: !(Operand mut Word8)                  -> Operand 'RW Word8
 
 deriving instance Show (Operand mut a)
 
 --
+
+instance NFData (Operand mut a) where
+    rnf = rwhnf
 
 instance Pretty (Operand mut a) where
     pretty (Register r)                          = pretty r
@@ -45,3 +49,6 @@ instance Pretty (Operand mut a) where
     pretty (IndirectWithMode addr PostDecrement) = parens (pretty addr <> "-")
     pretty (HimemIndirect ImmediateWord8)        = parens "0xFF00+a8"
     pretty (HimemIndirect addr)                  = parens ("0xFF00+" <> pretty addr)
+
+instance NFData AddressMode where
+    rnf = rwhnf
