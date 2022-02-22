@@ -38,17 +38,14 @@ instance Pretty (Operand mut a) where
     pretty (WideRegister wr)                     = pretty wr
     pretty (Flag f)                              = pretty f
     pretty (NotFlag f)                           = "N" <> pretty f
-    pretty ImmediateWord8                        = "d8"
-    pretty ImmediateInt8                         = "s8"
-    pretty ImmediateWord16                       = "d16"
-    pretty (Indirect ImmediateWord16)            = parens "a16"
+    pretty ImmediateWord8                        = "u8"
+    pretty ImmediateInt8                         = "i8"
+    pretty ImmediateWord16                       = "u16"
     pretty (Indirect addr)                       = parens (pretty addr)
-    pretty (IndirectWord16 ImmediateWord16)      = parens "a16"
     pretty (IndirectWord16 addr)                 = parens (pretty addr)
     pretty (IndirectWithMode addr PostIncrement) = parens (pretty addr <> "+")
     pretty (IndirectWithMode addr PostDecrement) = parens (pretty addr <> "-")
-    pretty (HimemIndirect ImmediateWord8)        = parens "0xFF00+a8"
-    pretty (HimemIndirect addr)                  = parens ("0xFF00+" <> pretty addr)
+    pretty (HimemIndirect addr)                  = parens ("FF00+" <> pretty addr)
 
 instance NFData AddressMode where
     rnf = rwhnf
