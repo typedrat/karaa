@@ -1,5 +1,13 @@
-module Karaa.CPU.Interrupts ( Internal.Interrupt(..)
-                            , Internal.MonadInterrupt(..)
+module Karaa.CPU.Interrupts ( Interrupt(..)
+                            , MonadInterrupt(..)
+                            , IRQState()
+                            , makeIRQState
+                            , initialIRQState
+                            , HasIRQState(..)
+                            , InterruptStatus(..)
                             ) where
 
-import qualified Karaa.CPU.Interrupts.Internal as Internal
+import Karaa.CPU.Interrupts.Internal
+
+initialIRQState :: IRQState
+initialIRQState = makeIRQState InterruptsDisabled 0 0

@@ -26,6 +26,7 @@ library
                      , Karaa.CPU.Interrupts
                      , Karaa.CPU.Interrupts.Internal
                      , Karaa.CPU.Registers
+                     , Karaa.CPU.State
                      , Karaa.Util.BitInByte
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
@@ -51,6 +52,7 @@ library
                      , RankNTypes
                      , ScopedTypeVariables
                      , StandaloneDeriving
+                     , TypeApplications
                      , UndecidableInstances
   other-extensions:    NamedFieldPuns
   ghc-options:         -O2 -Wall
