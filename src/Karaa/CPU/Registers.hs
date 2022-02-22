@@ -2,12 +2,10 @@
 {-# LANGUAGE RecordWildCards #-}
 module Karaa.CPU.Registers ( RegisterFile()
                            , makeRegisterFile
+                           , HasRegisterFile(..)
                            , WideRegister(..)
-                           , wideRegister
                            , Register(..)
-                           , register
                            , Flag(..)
-                           , flag
                            ) where
 
 import Control.DeepSeq       ( NFData(..), rwhnf )
@@ -38,35 +36,22 @@ data RegisterFile = RegisterFile { regAF, regBC
                   deriving (Eq)
 
 makeRegisterFile :: Word16 -> Word16 -> Word16 -> Word16 -> Word16 -> Word16 -> RegisterFile
-makeRegisterFile = RegisterFile
-{-# INLINE makeRegisterFile #-}
+makeRegisterFile af = RegisterFile (af .&. 0b1111_1111_1111_0000)
 
-wideRegister :: WideRegister -> Lens' RegisterFile Word16
-wideRegister AF = lens (\RegisterFile{ regAF } -> regAF) (\r regAF -> r { regAF = regAF .&. 0b1111_1111_1111_0000 })
-wideRegister BC = lens (\RegisterFile{ regBC } -> regBC) (\r regBC -> r { regBC })
-wideRegister DE = lens (\RegisterFile{ regDE } -> regDE) (\r regDE -> r { regDE })
-wideRegister HL = lens (\RegisterFile{ regHL } -> regHL) (\r regHL -> r { regHL })
-wideRegister PC = lens (\RegisterFile{ regPC } -> regPC) (\r regPC -> r { regPC })
-wideRegister SP = lens (\RegisterFile{ regSP } -> regSP) (\r regSP -> r { regSP })
-{-# INLINE wideRegister #-}
+class HasRegisterFile r where
+    registerFile :: Lens' r RegisterFile
 
-register :: Register -> Lens' RegisterFile Word8
-register A = wideRegister AF . upper
-register F = wideRegister AF . lower
-register B = wideRegister BC . upper
-register C = wideRegister BC . lower
-register D = wideRegister DE . upper
-register E = wideRegister DE . lower
-register H = wideRegister HL . upper
-register L = wideRegister HL . lower
-{-# INLINE register#-}
+    wideRegister :: WideRegister -> Lens' r Word16
+    wideRegister wr = registerFile . wideRegister wr
+    {-# INLINE wideRegister #-}
 
-flag :: Flag -> Lens' RegisterFile Bool
-flag Zero        = register F . bitAt 7
-flag Subtraction = register F . bitAt 6
-flag HalfCarry   = register F . bitAt 5
-flag Carry       = register F . bitAt 4
-{-# INLINE flag #-}
+    register :: Register -> Lens' r Word8
+    register r = registerFile . register r
+    {-# INLINE register #-}
+
+    flag :: Flag -> Lens' r Bool
+    flag f = registerFile . flag f
+    {-# INLINE flag #-}
 
 --
 
@@ -90,6 +75,38 @@ instance Pretty Flag where
     pretty Subtraction = "N"
     pretty HalfCarry   = "H"
     pretty Carry       = "C"
+
+instance HasRegisterFile RegisterFile where
+    registerFile :: Lens' RegisterFile RegisterFile
+    registerFile = id
+    {-# INLINE registerFile #-}
+
+    wideRegister :: WideRegister -> Lens' RegisterFile Word16
+    wideRegister AF = lens (\RegisterFile{ regAF } -> regAF) (\r regAF -> r { regAF = regAF .&. 0b1111_1111_1111_0000 })
+    wideRegister BC = lens (\RegisterFile{ regBC } -> regBC) (\r regBC -> r { regBC })
+    wideRegister DE = lens (\RegisterFile{ regDE } -> regDE) (\r regDE -> r { regDE })
+    wideRegister HL = lens (\RegisterFile{ regHL } -> regHL) (\r regHL -> r { regHL })
+    wideRegister PC = lens (\RegisterFile{ regPC } -> regPC) (\r regPC -> r { regPC })
+    wideRegister SP = lens (\RegisterFile{ regSP } -> regSP) (\r regSP -> r { regSP })
+    {-# INLINE wideRegister #-}
+
+    register :: Register -> Lens' RegisterFile Word8
+    register A = wideRegister AF . upper
+    register F = wideRegister AF . lower
+    register B = wideRegister BC . upper
+    register C = wideRegister BC . lower
+    register D = wideRegister DE . upper
+    register E = wideRegister DE . lower
+    register H = wideRegister HL . upper
+    register L = wideRegister HL . lower
+    {-# INLINE register#-}
+
+    flag :: Flag -> Lens' RegisterFile Bool
+    flag Zero        = register F . bitAt 7
+    flag Subtraction = register F . bitAt 6
+    flag HalfCarry   = register F . bitAt 5
+    flag Carry       = register F . bitAt 4
+    {-# INLINE flag #-}
 
 instance Show RegisterFile where
     show RegisterFile{..} = intercalate ", "
