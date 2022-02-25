@@ -19,7 +19,10 @@ source-repository head
   location: git://git@github.com:typedrat/karaa.git
 
 library
-  exposed-modules:     Karaa.CPU.Instructions.Decode
+  exposed-modules:     Karaa.Core.Types.BitInByte
+                     , Karaa.Core.Types.Memory
+                     , Karaa.Core.Types.WithMonadIO
+                     , Karaa.CPU.Instructions.Decode
                      , Karaa.CPU.Instructions.Mnemonic
                      , Karaa.CPU.Instructions.Operand
                      , Karaa.CPU.Instructions.Types
@@ -27,11 +30,8 @@ library
                      , Karaa.CPU.Interrupts.Internal
                      , Karaa.CPU.Registers
                      , Karaa.CPU.State
-                     , Karaa.Util.BitInByte
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
-                     , Karaa.Util.Memory
-                     , Karaa.Util.WithMonadIO
 
   build-depends:       base           >= 4.14     && < 5
                      , mtl           ^>= 2.2.2

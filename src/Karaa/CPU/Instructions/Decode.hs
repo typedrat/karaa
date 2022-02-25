@@ -14,7 +14,7 @@ import           Data.Word                      ( Word8, Word16 )
 import           Karaa.CPU.Instructions.Operand ( Operand(..), Mutability(..), AddressMode(..) )
 import           Karaa.CPU.Instructions.Types   ( Instruction(..), CBInstruction(..), UsesCarry(..) )
 import           Karaa.CPU.Registers            ( Register(..), WideRegister(..), Flag(..) )
-import           Karaa.Util.BitInByte           ( BitInByte(..) )
+import           Karaa.Core.Types.BitInByte     ( BitInByte(..) )
 
 -- | @decodeInstruction opcode@ converts @opcode@ into an elaborated 'Instruction', or 'InvalidInstruction'
 --   if it is not valid.

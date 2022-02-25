@@ -8,7 +8,7 @@ import Data.Int                       ( Int8 )
 import Data.Word                      ( Word8, Word16 )
 
 import Karaa.CPU.Instructions.Operand ( Operand, Mutability(..) )
-import Karaa.Util.BitInByte           ( BitInByte )
+import Karaa.Core.Types.BitInByte     ( BitInByte )
 
 -- | Is the carry flag an implicit operand?
 data UsesCarry = WithCarry | WithoutCarry
