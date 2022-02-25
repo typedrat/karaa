@@ -1,13 +1,12 @@
-module Karaa.Util.Hex ( Hex(..), showHex ) where
+{-|
+module: Karaa.Util.Hex
 
-import Data.Bits
-import Data.Word
+Convert values into hexidecimal strings.
+-}
+module Karaa.Util.Hex ( showHex ) where
 
-newtype Hex a = Hex { unHex :: a }
-              deriving (Eq, Ord, Enum, Bounded, Num, Real, Integral, Bits, FiniteBits)
-
-instance (FiniteBits a) => Show (Hex a) where
-    show = showHex
+import Data.Bits ( Bits(..), FiniteBits( finiteBitSize ) )
+import Data.Word ( Word8 )
 
 copyNibble :: (Bits a, Bits b) => a -> b
 copyNibble x = foldr (\i acc -> if testBit x i then setBit acc i else acc) zeroBits [0..3]
@@ -34,6 +33,8 @@ toHexit = toHexit' . copyNibble
         toHexit' 0xF = 'F'
         toHexit' _   = error "the impossible happened! toHexit' only understands nybbles"
 
+-- | Convert a finite-sized value representing a binary number into a string containing the raw
+--   hexidecimal representation of that value.
 showHex :: forall a. FiniteBits a => a -> String
 showHex x = go id (finiteBitSize x) x
     where

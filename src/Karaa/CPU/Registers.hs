@@ -1,3 +1,8 @@
+{-|
+module: Karaa.CPU.Registers
+
+The register file, register access, and other related types.
+-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 module Karaa.CPU.Registers ( RegisterFile()
@@ -20,35 +25,48 @@ import Prettyprinter         ( Pretty(..), unsafeViaShow )
 import Karaa.Util.ByteLenses ( lower, upper )
 import Karaa.Util.Hex        ( showHex )
 
-data Register = A | F | B | C | D | E | H | L
+-- | The GameBoy's CPU's 8-bit registers.
+data Register = A | B | C | D | E | H | L
               deriving (Show, Eq)
 
+-- | The GameBoy CPU's 16-bit registers.
 data WideRegister = AF | BC | DE | HL | PC | SP
                   deriving (Show, Eq)
 
+-- | The GameBoy CPU's flags.
 data Flag = Zero | Subtraction | HalfCarry | Carry
           deriving (Show, Eq)
 
+-- | The GameBoy CPU's register file.
 data RegisterFile = RegisterFile { regAF, regBC
                                  , regDE, regHL
                                  , regPC, regSP :: {-# UNPACK #-} !Word16
                                  }
                   deriving (Eq)
 
+-- | Construct a register file from the initial values of each 16-bit register, in the order
+--   @AF BC DE HL PC SP@.
 makeRegisterFile :: Word16 -> Word16 -> Word16 -> Word16 -> Word16 -> Word16 -> RegisterFile
 makeRegisterFile af = RegisterFile (af .&. 0b1111_1111_1111_0000)
 
+-- | Classy lenses for accessing register files and their components.
 class HasRegisterFile r where
     registerFile :: Lens' r RegisterFile
 
+    -- | A lens for accessing the GameBoy's 16-bit registers.
+    --
+    --   Note that this is not technically a lawful lens, because we faithfully enforce that the
+    --   lower four bits of @AF@ are always zero.
     wideRegister :: WideRegister -> Lens' r Word16
     wideRegister wr = registerFile . wideRegister wr
     {-# INLINE wideRegister #-}
 
+    -- | A lens for accessing the GameBoy's 8-bit registers.
     register :: Register -> Lens' r Word8
     register r = registerFile . register r
     {-# INLINE register #-}
 
+    -- | A lens for accessing the GameBoy's flags.
     flag :: Flag -> Lens' r Bool
     flag f = registerFile . flag f
     {-# INLINE flag #-}
@@ -92,7 +110,6 @@ instance HasRegisterFile RegisterFile where
 
     register :: Register -> Lens' RegisterFile Word8
     register A = wideRegister AF . upper
-    register F = wideRegister AF . lower
     register B = wideRegister BC . upper
     register C = wideRegister BC . lower
     register D = wideRegister DE . upper
@@ -102,10 +119,10 @@ instance HasRegisterFile RegisterFile where
     {-# INLINE register#-}
 
     flag :: Flag -> Lens' RegisterFile Bool
-    flag Zero        = register F . bitAt 7
-    flag Subtraction = register F . bitAt 6
-    flag HalfCarry   = register F . bitAt 5
-    flag Carry       = register F . bitAt 4
+    flag Zero        = wideRegister AF . lower . bitAt 7
+    flag Subtraction = wideRegister AF . lower . bitAt 6
+    flag HalfCarry   = wideRegister AF . lower . bitAt 5
+    flag Carry       = wideRegister AF . lower . bitAt 4
     {-# INLINE flag #-}
 
 instance Show RegisterFile where

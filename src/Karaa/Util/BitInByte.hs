@@ -1,9 +1,11 @@
-module Karaa.Util.BitInByte ( BitInByte( Bit0, Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7, rawBitInByte ) ) where
+module Karaa.Util.BitInByte ( BitInByte( Bit0, Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7 ), bitInByte ) where
 
 import Control.DeepSeq ( NFData )
 import Prettyprinter   ( Pretty )
 
-newtype BitInByte = BitInByte { rawBitInByte :: Int }
+
+-- | A sum type for specifying a bit within a byte.
+newtype BitInByte = BitInByte { bitInByte :: Int {- ^ Get an integral representation of the given bit number. -}  }
                   deriving (Eq, Pretty, NFData)
 
 instance Show BitInByte where

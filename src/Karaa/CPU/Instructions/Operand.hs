@@ -8,11 +8,15 @@ import Prettyprinter       ( Pretty(..), parens )
 
 import Karaa.CPU.Registers ( WideRegister, Register, Flag )
 
+-- | The special addressing modes of the GameBoy's CPU.
 data AddressMode = PostIncrement | PostDecrement
                  deriving (Show, Eq)
 
+-- | A type-level marker for the mutability of an operand.
 data Mutability = RW | RO
 
+-- | An elaborated structural representation of the possible operands that an instruction
+--   can take.
 data Operand (mut :: Mutability) (a :: Type) where
     Register         :: !Register                             -> Operand 'RW Word8
     WideRegister     :: !WideRegister                         -> Operand 'RW Word16
@@ -24,6 +28,7 @@ data Operand (mut :: Mutability) (a :: Type) where
     Indirect         :: !(Operand mut Word16)                 -> Operand 'RW Word8
     IndirectWord16   :: !(Operand mut Word16)                 -> Operand 'RW Word16
     IndirectWithMode :: !(Operand 'RW Word16) -> !AddressMode -> Operand 'RW Word8
+    -- | @HimemIndirect addr@ references the byte at @FF00 + addr@.
     HimemIndirect    :: !(Operand mut Word8)                  -> Operand 'RW Word8
 
 deriving instance Show (Operand mut a)

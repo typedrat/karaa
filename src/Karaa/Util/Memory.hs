@@ -1,6 +1,9 @@
-module Karaa.Util.Memory ( ROM(), romSize, rawROMSize, romFromByteString, readROM, rawReadROM
-                         , RAM(), ramSize, rawRAMSize, MonadRAM(..), readRAM, writeRAM
-                         , Banked(..), readBankedROM, readBankedRAM, writeBankedRAM
+module Karaa.Util.Memory ( -- * ROM
+                           ROM(), romSize, romFromByteString, readROM, rawReadROM
+                           -- * RAM
+                         , RAM(), ramSize, MonadRAM(..)
+                           -- * Banked memory
+                         , Banked(), bankSize, bankCount, bankedROM, readBankedROM, bankedRAM, readBankedRAM, writeBankedRAM
                          ) where
 
 import qualified Data.ByteString              as BS
@@ -9,86 +12,124 @@ import qualified Data.Vector.Storable         as V
 import qualified Data.Vector.Storable.Mutable as MV
 import           Data.Word                    ( Word8, Word16 )
 
-import           Karaa.Util.WithMonadIO       ( MonadIO(..), WithMonadIO )       
+import           Karaa.Util.Hex               ( showHex )
+import           Karaa.Util.WithMonadIO       ( MonadIO(..), WithMonadIO )  
 
 --
 
+-- | An opaque type wrapping the underlying 'V.Vector' that is used to represent ROM in Karaa.
 newtype ROM = ROM (V.Vector Word8)
 
 instance Show ROM where
     show (ROM v) = "ROM of size " ++ show (V.length v)
 
-romSize :: ROM -> Word16
-romSize = fromIntegral . rawROMSize
+-- | Get the size of the ROM in bytes.
+romSize :: ROM -> Int
+romSize (ROM v) = V.length v
 
-rawROMSize :: ROM -> Int
-rawROMSize (ROM v) = V.length v
-
+-- | Create a 'ROM' from a 'BS.ByteString' that contains the desired ROM contents.
 romFromByteString :: BS.ByteString -> ROM
 romFromByteString bs = ROM romVector
     where (fptr, len) = BSI.toForeignPtr0 bs
           romVector = V.unsafeFromForeignPtr0 fptr len
- 
-readROM :: ROM -> Word16 -> Word8
-readROM rom = rawReadROM rom . fromIntegral
 
+-- | @readROM rom addr@ reads the byte at @addr@ from the RAM.
+readROM :: ROM -> Word16 -> Word8
+readROM (ROM romVector) = (romVector V.!) . fromIntegral
+
+-- | @rawReadROM rom addr@ reads the byte at @addr@ from the ROM. Note that this function does not perform any bounds checking.
 rawReadROM :: ROM -> Int -> Word8
-rawReadROM (ROM romVector) = (romVector V.!)
+rawReadROM (ROM romVector) = V.unsafeIndex romVector
 
 --
 
+-- | An opaque type wrapping the underlying 'MV.IOVector' that is used to represent RAM in Karaa.
 newtype RAM = RAM (MV.IOVector Word8)
 
 instance Show RAM where
     show (RAM v) = "RAM of size " ++ show (MV.length v)
 
-ramSize :: RAM -> Word16
-ramSize = fromIntegral . rawRAMSize
+-- | Get the size of the RAM in bytes.
+ramSize :: RAM -> Int
+ramSize (RAM v) = MV.length v
 
-rawRAMSize :: RAM -> Int
-rawRAMSize (RAM v) = MV.length v
-
+-- | This class exists to abstract away the underlying details of how RAM access is implemented, largely so that we can use RAMs
+--   in functions that we do not want to allow to access the full power of 'Control.Monad.IO.Class.MonadIO', which this is
+--   effectively a constraint synonym for.
 class (Monad m) => MonadRAM m where
+    -- | Create a 'RAM' of the given size in bytes. It will be filled with zeroes.
     newRAM :: Int -> m RAM
+    -- | @readRAM ram addr@ reads the byte at @addr@ from the RAM. 
+    readRAM :: RAM -> Word16 -> m Word8
+    -- | @writeRAM ram addr byte@ writes the byte @byte@ to @addr@ in the RAM.
+    writeRAM :: RAM -> Word16 -> Word8 -> m ()
+    -- | @rawReadRAM ram addr@ reads the byte at @addr@ from the RAM. Note that this function does not perform any bounds checking. 
     rawReadRAM :: RAM -> Int -> m Word8
+    -- | @rawWriteRAM ram addr byte@ writes the byte @byte@ to @addr@ in the RAM. Note that this function does not perform any
+    --   bounds checking.
     rawWriteRAM :: RAM -> Int -> Word8 -> m ()
 
 instance (MonadIO m) => MonadRAM (WithMonadIO m) where
     newRAM = liftIO . fmap RAM . MV.new
     {-# INLINE newRAM #-}
 
-    rawReadRAM (RAM v) addr = liftIO $ MV.read v addr  
+    readRAM (RAM v) addr = liftIO $ MV.read v (fromIntegral addr)
+    {-# INLINE readRAM #-}
+
+    writeRAM (RAM v) addr byte = liftIO $ MV.write v (fromIntegral addr) byte 
+    {-# INLINE writeRAM #-}
+
+    rawReadRAM (RAM v) addr = liftIO $ MV.unsafeRead v addr  
     {-# INLINE rawReadRAM#-}
     
-    rawWriteRAM (RAM v) addr byte = liftIO $ MV.write v addr byte
+    rawWriteRAM (RAM v) addr byte = liftIO $ MV.unsafeWrite v addr byte
     {-# INLINE rawWriteRAM #-}
-
-readRAM :: (MonadRAM m) => RAM -> Word16 -> m Word8 
-readRAM ram addr = rawReadRAM ram (fromIntegral addr)
-{-# INLINE readRAM #-}
-
-writeRAM :: (MonadRAM m) => RAM -> Word16 -> Word8 -> m ()
-writeRAM ram addr = rawWriteRAM ram (fromIntegral addr)
-{-# INLINE writeRAM #-}
 
 --
 
-data Banked a = Banked { bankedMemory :: a, bankSize :: Int }
-              deriving (Show, Eq)
+-- | A wrapper type to simplify access to banked memory by storing the bank size and count along with the underlying memory.
+data Banked a = Banked { bankedMemory :: !a
+                       , bankSize :: !Int  -- ^ Get the size of the banks in this banked view.
+                       , bankCount :: !Int -- ^ Get the number of banks in this banked view.
+                       }
+              deriving (Show)
+
+-- | Create a 'Banked' wrapper to access the given 'ROM' in banks of the given size.
+bankedROM :: ROM -> Int -> Banked ROM
+bankedROM rom size
+    | leftovers /= 0 = error $ concat ["Bank size ", show size, " does not evenly partition ROM size ", show $ romSize rom]
+    | otherwise = Banked rom size count
+    where
+        (count, leftovers) = romSize rom `divMod` size
+
+-- | Create a 'Banked' wrapper to access the given 'RAM' in banks of the given size.
+bankedRAM :: RAM -> Int -> Banked RAM
+bankedRAM ram size
+    | leftovers /= 0 = error $ concat ["Bank size ", show size, " does not evenly partition RAM size ", show $ ramSize ram]
+    | otherwise = Banked ram size count
+    where
+        (count, leftovers) = ramSize ram `divMod` size
 
 wrapBanked :: (a -> Int -> r) -> Banked a -> Int -> Word16 -> r
-wrapBanked f (Banked mem size) bank addr = f mem rawAddr
+wrapBanked f (Banked mem size count) bank addr 
+    | bank < 0     = error "Bank cannot be negative!"
+    | bank > count = error $ concat ["Cannot access bank ", show bank, "! Valid banks are 0..", show count]
+    | addr' > size = error $ concat ["Address ", showHex addr', " is larger than bank size ", showHex size]
+    | otherwise    = f mem rawAddr
     where
         addr' = fromIntegral addr
         rawAddr = bank * size + addr'
 
+-- | @readBankedROM rom bank addr@ reads the value at address @addr@ in bank @bank@.
 readBankedROM :: Banked ROM -> Int -> Word16 -> Word8
 readBankedROM = wrapBanked rawReadROM
 
+-- | @readBankedRAM ram bank addr@ reads the value at address @addr@ in bank @bank@.
 readBankedRAM :: (MonadRAM m) => Banked RAM -> Int -> Word16 -> m Word8
 readBankedRAM = wrapBanked rawReadRAM
 {-# INLINE readBankedRAM #-}
 
+-- | @writeBankedRAM ram bank addr byte@ writes @byte@ to address @addr@ in bank @bank@.
 writeBankedRAM :: (MonadRAM m) => Banked RAM -> Int -> Word16 -> Word8 -> m ()
 writeBankedRAM = wrapBanked rawWriteRAM
 {-# INLINE writeBankedRAM #-}

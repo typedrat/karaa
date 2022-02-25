@@ -16,9 +16,12 @@ import           Karaa.CPU.Instructions.Types   ( Instruction(..), CBInstruction
 import           Karaa.CPU.Registers            ( Register(..), WideRegister(..), Flag(..) )
 import           Karaa.Util.BitInByte           ( BitInByte(..) )
 
+-- | @decodeInstruction opcode@ converts @opcode@ into an elaborated 'Instruction', or 'InvalidInstruction'
+--   if it is not valid.
 decodeInstruction :: Word8 -> Instruction
 decodeInstruction opcode = instructions `V.unsafeIndex` fromIntegral opcode
 
+-- | @decodeCBInstruction opcode@ converts @opcode@ into an elaborated 'CBInstruction'.
 decodeCBInstruction :: Word8 -> CBInstruction
 decodeCBInstruction opcode = cbInstructions `V.unsafeIndex` fromIntegral opcode
 

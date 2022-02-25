@@ -10,9 +10,16 @@ import Data.Word                      ( Word8, Word16 )
 import Karaa.CPU.Instructions.Operand ( Operand, Mutability(..) )
 import Karaa.Util.BitInByte           ( BitInByte )
 
+-- | Is the carry flag an implicit operand?
 data UsesCarry = WithCarry | WithoutCarry
                deriving (Show, Eq)
 
+-- | A representation of CPU instructions, roughly divided such that each constructor is
+--   one logical operation that can cleanly be implemented as a single function.
+--
+--   This type is quite intentionally much broader than the actual space of instructions
+--   implemented in the GameBoy's processor, to ensure that the execution of instructions
+--   is based on the instruction's /semantic meaning/.
 data Instruction where
     -- Load/store
     Load :: !(Operand 'RW a) -> !(Operand mut a) -> Instruction
@@ -66,9 +73,16 @@ data Instruction where
     Reset                     ::                                                  !Word16 -> Instruction
 
     -- Things that aren't actually instructions
+    -- | The @CB@ opcode tells the decoder to fetch another byte and evaluate it as a 'CBInstruction'.
     CBPrefix           :: Instruction
+    -- | Many of the values in this type are not valid (i.e. opcode-representable) GameBoy instructions.
+    --
+    --   This constructor is specifically for handling the opcodes that do not map to any instruction.
     InvalidInstruction :: Instruction
 
+-- | A representation of the CPU instructions encoded with two-byte opcodes of
+--   the form @CB xx@, roughly divided such that each constructor is one
+--   logical operation that can cleanly be implemented as a single function.
 data CBInstruction where
     -- Rotate and shift, cont'd
     RotateLeft           :: !(Operand 'RW Word8) -> !UsesCarry -> CBInstruction
