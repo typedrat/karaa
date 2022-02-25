@@ -1,4 +1,6 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Karaa.CPU.Instructions.Decode ( decodeInstruction, decodeCBInstruction, forceDecoderTables ) where
 
 import           Control.DeepSeq                ( rnf )
@@ -31,13 +33,13 @@ forceDecoderTables = do
 instructions :: V.Vector Instruction
 instructions = V.create $ do
     v <- MV.unsafeNew 256
-    mapM_ (uncurry (MV.unsafeWrite v)) (fromXYZ makeInstruction <$> [0..3] <*> [0..7] <*> [0..7]) 
+    mapM_ (uncurry (MV.unsafeWrite v)) (fromXYZ makeInstruction <$> [0..3] <*> [0..7] <*> [0..7])
     return v
 
 cbInstructions :: V.Vector CBInstruction
 cbInstructions = V.create $ do
     v <- MV.unsafeNew 256
-    mapM_ (uncurry (MV.unsafeWrite v)) (fromXYZ makeCBInstruction <$> [0..3] <*> [0..7] <*> [0..7]) 
+    mapM_ (uncurry (MV.unsafeWrite v)) (fromXYZ makeCBInstruction <$> [0..3] <*> [0..7] <*> [0..7])
     return v
 
 makeInstruction :: Int -> Int -> Int -> Instruction
@@ -75,8 +77,8 @@ makeInstruction 1 y z = Load (r ! y) (r ! z)
 
 makeInstruction 2 y z = alu ! y $ r ! z
 
-makeInstruction 3 4 0 = Load (HimemIndirect $ ImmediateWord8) (Register A)
-makeInstruction 3 6 0 = Load (Register A)                     (HimemIndirect $ ImmediateWord8)
+makeInstruction 3 4 0 = Load (HimemIndirect ImmediateWord8) (Register A)
+makeInstruction 3 6 0 = Load (Register A)                   (HimemIndirect ImmediateWord8)
 makeInstruction 3 5 0 = AddSigned  (WideRegister SP)                   ImmediateInt8
 makeInstruction 3 7 0 = LoadSigned (WideRegister HL) (WideRegister SP) ImmediateInt8
 makeInstruction 3 y 0 = ConditionalReturn (cc ! y)
@@ -88,7 +90,7 @@ makeInstruction 3 y 1 = case y `divMod` 2 of
         (3, 1) -> Load (WideRegister SP) (WideRegister HL)
 makeInstruction 3 4 2 = Load (HimemIndirect $ Register C) (Register A)
 makeInstruction 3 6 2 = Load (Register A)                 (HimemIndirect $ Register C)
-makeInstruction 3 5 2 = Load (Indirect ImmediateWord16)   (Register A) 
+makeInstruction 3 5 2 = Load (Indirect ImmediateWord16)   (Register A)
 makeInstruction 3 7 2 = Load (Register A)                 (Indirect ImmediateWord16)
 makeInstruction 3 y 2 = ConditionalAbsoluteJump (cc ! y) ImmediateWord16
 makeInstruction 3 0 3 = AbsoluteJump ImmediateWord16
@@ -101,7 +103,7 @@ makeInstruction 3 1 5 = Call ImmediateWord16
 makeInstruction 3 y 5
         | q == 0 = Push (rp2 ! p)
     where (p, q) = y `divMod` 2
-makeInstruction 3 y 6 = alu ! y $ ImmediateWord8 
+makeInstruction 3 y 6 = alu ! y $ ImmediateWord8
 makeInstruction 3 y 7 = Reset (fromIntegral $ y * 8)
 
 makeInstruction _ _ _ = InvalidInstruction
