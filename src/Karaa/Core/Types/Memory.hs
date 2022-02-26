@@ -6,6 +6,7 @@ module Karaa.Core.Types.Memory ( -- * ROM
                                , Banked(), bankSize, bankCount, bankedROM, readBankedROM, bankedRAM, readBankedRAM, writeBankedRAM
                                ) where
 
+import           Control.Monad.IO.Class       ( MonadIO(..) )
 import qualified Data.ByteString              as BS
 import qualified Data.ByteString.Internal     as BSI
 import qualified Data.Vector.Storable         as V
@@ -13,7 +14,7 @@ import qualified Data.Vector.Storable.Mutable as MV
 import           Data.Word                    ( Word8, Word16 )
 
 import           Karaa.Util.Hex               ( showHex )
-import           Karaa.Core.Types.WithMonadIO ( MonadIO(..), WithMonadIO )  
+import           Karaa.Core.Types.WithMonadIO ( WithMonadIO )  
 
 --
 
