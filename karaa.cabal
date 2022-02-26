@@ -30,6 +30,7 @@ library
                      , Karaa.CPU.Interrupts.Internal
                      , Karaa.CPU.Registers
                      , Karaa.CPU.State
+                     , Karaa.Hardware.Serial
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
 
@@ -49,6 +50,7 @@ library
                      , GeneralizedNewtypeDeriving
                      , InstanceSigs
                      , KindSignatures
+                     , LambdaCase
                      , NamedFieldPuns
                      , NumericUnderscores
                      , OverloadedStrings
