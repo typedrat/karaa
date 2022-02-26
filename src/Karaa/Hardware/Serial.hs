@@ -1,7 +1,7 @@
 {-|
 Module: Karaa.Hardware.Serial
 
-For documentation on how this works, [see the Pan Docs](https://gbdev.io/pandocs/Serial_Data_Transfer_(Link_Cable).html).
+For documentation on how this works, [see the Pan Docs](https://gbdev.io/pandocs/Serial_Data_Transfer_%28Link_Cable%29.html).
 -}
 
 module Karaa.Hardware.Serial ( -- * @SerialPort@ 
