@@ -93,21 +93,28 @@ readSerialPortRegisters _ = empty
 
 -- | Handle writes to the serial port registers.
 writeSerialPortRegisters :: (MonadState s m, HasSerialPort s) => Word16 -> Word8 -> m ()
-writeSerialPortRegisters 0xFF01 byte = modifying serialPort $ \st -> 
-                                           st { serialData = byte }
-writeSerialPortRegisters 0xFF02 byte = modifying serialPort $ \st ->
-                                           st { transferInProgress = if byte ^. bitAt 7 then Just 0xFF else Nothing
-                                              , clockSource        = byte ^. bitAt 0 . clockSourceBit
-                                              , currentTicks       = 0
-                                              }
-writeSerialPortRegisters _      _    = return ()
+writeSerialPortRegisters 0xFF01 byte =
+    modifying serialPort $ \st -> 
+        st { serialData = byte }
+writeSerialPortRegisters 0xFF02 byte =
+    modifying serialPort $ \st ->
+        st { transferInProgress = if byte ^. bitAt 7 then Just 0xFF else Nothing
+           , clockSource        = byte ^. bitAt 0 . clockSourceBit
+           , currentTicks       = 0
+           }
+writeSerialPortRegisters _      _    =
+    return ()
 {-# INLINEABLE writeSerialPortRegisters #-}
 
 -- | Advance the simulation of the serial port by one M-cycle.
 tickSerialPort :: (MonadState s m, HasSerialPort s, MonadInterrupt m, MonadIO m) => m ()
 tickSerialPort = use serialPort >>= \case
     -- Are we the master of a transfer in progress?
-    port@(SerialPort { transferInProgress = Just inProgress, clockSource = InternalClock, serialCallback = SerialCallback serialCallback, .. }) -> 
+    port@(SerialPort { transferInProgress = Just inProgress
+                     , clockSource = InternalClock
+                     , serialCallback = SerialCallback serialCallback
+                     , .. 
+                     }) -> 
         -- Is it time to clock out a bit?
         if currentTicks == ticksPerClock
             then do
