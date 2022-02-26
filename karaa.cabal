@@ -31,6 +31,7 @@ library
                      , Karaa.CPU.Registers
                      , Karaa.CPU.State
                      , Karaa.Hardware.Serial
+                     , Karaa.Hardware.WorkRAM
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
 

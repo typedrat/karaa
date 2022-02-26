@@ -7,6 +7,8 @@ module Karaa.Core.Types.Memory ( -- * ROM
                                ) where
 
 import           Control.Monad.IO.Class       ( MonadIO(..) )
+import           Control.Monad.Trans          ( MonadTrans(..) )
+import           Control.Monad.Trans.Maybe    ( MaybeT )
 import qualified Data.ByteString              as BS
 import qualified Data.ByteString.Internal     as BSI
 import qualified Data.Vector.Storable         as V
@@ -84,6 +86,22 @@ instance (MonadIO m) => MonadRAM (WithMonadIO m) where
     {-# INLINE rawReadRAM#-}
     
     rawWriteRAM (RAM v) addr byte = liftIO $ MV.unsafeWrite v addr byte
+    {-# INLINE rawWriteRAM #-}
+
+instance (MonadRAM m) => MonadRAM (MaybeT m) where
+    newRAM size = lift $ newRAM size
+    {-# INLINE newRAM #-}
+
+    readRAM ram addr = lift $ readRAM ram addr
+    {-# INLINE readRAM #-}
+
+    writeRAM ram addr byte = lift $ writeRAM ram addr byte 
+    {-# INLINE writeRAM #-}
+
+    rawReadRAM ram addr = lift $ rawReadRAM ram addr  
+    {-# INLINE rawReadRAM#-}
+    
+    rawWriteRAM ram addr byte = lift $ rawWriteRAM ram addr byte
     {-# INLINE rawWriteRAM #-}
 
 --
