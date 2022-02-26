@@ -22,6 +22,7 @@ library
   exposed-modules:     Karaa.Core.Types.BitInByte
                      , Karaa.Core.Types.Memory
                      , Karaa.Core.Types.WithMonadIO
+                     , Karaa.Core.Monad
                      , Karaa.CPU.Instructions.Decode
                      , Karaa.CPU.Instructions.Mnemonic
                      , Karaa.CPU.Instructions.Operand
@@ -31,6 +32,7 @@ library
                      , Karaa.CPU.Registers
                      , Karaa.CPU.State
                      , Karaa.Hardware.Serial
+                     , Karaa.Hardware.State
                      , Karaa.Hardware.WorkRAM
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
@@ -47,7 +49,7 @@ library
   default-language:    Haskell2010
   default-extensions:  BinaryLiterals
                      , DataKinds
-                     , DeriveGeneric
+                     , DerivingVia
                      , GADTs
                      , GeneralizedNewtypeDeriving
                      , InstanceSigs

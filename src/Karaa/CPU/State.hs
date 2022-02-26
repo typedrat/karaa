@@ -1,6 +1,5 @@
-module Karaa.CPU.State ( CPUState(..), initialCPUState, HasCPUState(..), WithCPUState(..) ) where
+module Karaa.CPU.State ( CPUState(..), initialCPUState, HasCPUState(..) ) where
 
-import Control.Lens.Iso     ( coerced )
 import Control.Lens.Lens    ( Lens', lens )
 
 import Karaa.CPU.Registers  ( RegisterFile, makeRegisterFile, HasRegisterFile(..) )
@@ -30,22 +29,9 @@ initialCPUState = CPUState regs initialIRQState
 --
 
 -- | Classy lenses for accessing the 'CPUState'.
-class HasCPUState st where
+class (HasRegisterFile st, HasIRQState st) => HasCPUState st where
     cpuState :: Lens' st CPUState
 
 instance HasCPUState CPUState where
     cpuState = id
     {-# INLINE cpuState #-}
-
---
-
--- | A simple @newtype@ wrapper intended for use with @DerivingVia@.
-newtype WithCPUState a = WithCPUState a
-
-instance (HasCPUState a) => HasRegisterFile (WithCPUState a) where
-    registerFile = coerced . cpuState @a . registerFile
-    {-# INLINE registerFile #-}
-
-instance (HasCPUState a) => HasIRQState (WithCPUState a) where
-    irqState = coerced . cpuState @a . irqState
-    {-# INLINE irqState #-}

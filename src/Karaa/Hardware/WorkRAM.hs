@@ -12,6 +12,7 @@ import Data.Word                 ( Word8, Word16 )
 import Karaa.Core.Types.Memory   ( RAM, MonadRAM(..) )
 
 newtype WorkRAM = DMGWorkRAM RAM
+                deriving (Show)
 
 makeWorkRAM :: (MonadRAM m) => m WorkRAM
 makeWorkRAM = DMGWorkRAM <$> newRAM 0x2000

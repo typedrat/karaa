@@ -6,6 +6,7 @@ The outside-facing interface of the interrupt unit. This should contain everythi
 module Karaa.CPU.Interrupts ( -- * Throwing interrupts
                               Interrupt(..)
                             , MonadInterrupt(..)
+                            , WithIRQState(..)
                               -- * @IRQState@
                             , IRQState()
                             , initialIRQState
