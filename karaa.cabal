@@ -49,16 +49,16 @@ library
                      , GeneralizedNewtypeDeriving
                      , InstanceSigs
                      , KindSignatures
+                     , NamedFieldPuns
                      , NumericUnderscores
                      , OverloadedStrings
                      , PatternSynonyms
                      , RankNTypes
+                     , RecordWildCards
                      , ScopedTypeVariables
                      , StandaloneDeriving
                      , TypeApplications
                      , UndecidableInstances
-  other-extensions:    NamedFieldPuns
-                     , RecordWildCards
   ghc-options:         -O2 -Wall
 
 executable karaa

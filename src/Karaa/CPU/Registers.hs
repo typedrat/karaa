@@ -3,8 +3,6 @@ module: Karaa.CPU.Registers
 
 The register file, register access, and other related types.
 -}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
 module Karaa.CPU.Registers ( RegisterFile()
                            , makeRegisterFile
                            , HasRegisterFile(..)

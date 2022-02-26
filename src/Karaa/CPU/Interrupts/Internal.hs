@@ -5,8 +5,6 @@ The full interface of the interrupt unit, including many functions that are only
 should not be used by emulation code for hardware that merely sits on the bus, because it allows for many actions that
 are outside of the limits of the actual bus interface.
 -}
-
-{-# LANGUAGE NamedFieldPuns #-}
 module Karaa.CPU.Interrupts.Internal ( -- * @IRQState@
                                        IRQState()
                                      , makeIRQState

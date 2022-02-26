@@ -1,8 +1,7 @@
-{-# LANGUAGE NamedFieldPuns #-}
 module Karaa.CPU.State ( CPUState(..), initialCPUState, HasCPUState(..), WithCPUState(..) ) where
 
-import Control.Lens.Iso              ( coerced )
-import Control.Lens.Lens             ( Lens', lens )
+import Control.Lens.Iso     ( coerced )
+import Control.Lens.Lens    ( Lens', lens )
 
 import Karaa.CPU.Registers  ( RegisterFile, makeRegisterFile, HasRegisterFile(..) )
 import Karaa.CPU.Interrupts ( IRQState, initialIRQState, HasIRQState(..) )
