@@ -21,9 +21,11 @@ module Karaa.CPU.Interrupts.Internal ( -- * @IRQState@
                                      , checkForPendingInterrupt
                                      ) where
 
+import Control.Applicative       ( empty )
 import Control.Lens.Combinators  ( use, modifying )
 import Control.Lens.Lens         ( Lens' )
 import Control.Monad.State.Class ( MonadState)
+import Control.Monad.Trans.Maybe ( MaybeT )
 import Data.Bits                 ( (.&.), setBit, clearBit, countTrailingZeros )
 import Data.Word                 ( Word8, Word16 )
 
@@ -51,14 +53,14 @@ instance HasIRQState IRQState where
 --
 
 -- | Handles reads that may involve the interrupt unit's registers.
-readInterruptRegisters :: (MonadState s m, HasIRQState s) => Word16 -> m (Maybe Word8)
+readInterruptRegisters :: (MonadState s m, HasIRQState s) => Word16 -> MaybeT m Word8
 readInterruptRegisters 0xFF0F = do
     IRQState { irqFlags } <- use irqState
-    return (Just irqFlags)
+    return irqFlags
 readInterruptRegisters 0xFFFF = do
     IRQState { irqEnableMask } <- use irqState
-    return (Just irqEnableMask)
-readInterruptRegisters _ = return Nothing
+    return irqEnableMask
+readInterruptRegisters _ = empty
 {-# INLINE readInterruptRegisters #-}
 
 -- | Handles writes that may involve the interrupt unit's registers.

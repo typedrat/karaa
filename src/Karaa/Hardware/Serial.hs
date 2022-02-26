@@ -12,6 +12,7 @@ module Karaa.Hardware.Serial ( -- * @SerialPort@
                              , readSerialPortRegisters, writeSerialPortRegisters, tickSerialPort
                              ) where
 
+import Control.Applicative       ( empty )
 import Control.Lens.Combinators  ( modifying, use )
 import Control.Lens.Iso          ( Iso', iso )
 import Control.Lens.Lens         ( Lens' )
@@ -19,11 +20,13 @@ import Control.Lens.Operators    ( (^.), (&), (.~), (.=) )
 import Control.Monad             ( when )
 import Control.Monad.IO.Class    ( MonadIO(..) )
 import Control.Monad.State.Class ( MonadState )
+import Control.Monad.Trans.Maybe ( MaybeT )
 import Data.Bits                 ( shiftL )
 import Data.Bits.Lens            ( bitAt )
 import Data.Char                 ( chr )
 import Data.Maybe                ( isJust )
 import Data.Word                 ( Word8, Word16 )
+
 import Karaa.CPU.Interrupts      ( MonadInterrupt(..), Interrupt( SerialInterrupt ) )
 
 --
@@ -74,18 +77,18 @@ unusedBits :: Word8
 unusedBits = 0b0111_1110
 
 -- | Handle reads from the serial port registers.
-readSerialPortRegisters :: (MonadState s m, HasSerialPort s) => Word16 -> m (Maybe Word8)
+readSerialPortRegisters :: (MonadState s m, HasSerialPort s) => Word16 -> MaybeT m Word8
 readSerialPortRegisters 0xFF01 = do
     SerialPort { serialData } <- use serialPort
-    return (Just serialData)
+    return serialData
 readSerialPortRegisters 0xFF02 = do
     SerialPort { transferInProgress, clockSource } <- use serialPort
 
     let regValue = unusedBits & bitAt 7                  .~ isJust transferInProgress
                               & bitAt 0 . clockSourceBit .~ clockSource
     
-    return (Just regValue)
-readSerialPortRegisters _ = return Nothing
+    return regValue
+readSerialPortRegisters _ = empty
 {-# INLINEABLE readSerialPortRegisters #-}
 
 -- | Handle writes to the serial port registers.
