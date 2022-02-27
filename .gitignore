@@ -1,6 +1,7 @@
 dist*/
 cabal.project.local
 .ghc.environment*
+.ghci
 .DS_Store
 bootroms/*
 roms/*
