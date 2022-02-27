@@ -33,8 +33,8 @@ romSize (ROM v) = V.length v
 -- | Create a 'ROM' from a 'BS.ByteString' that contains the desired ROM contents.
 romFromByteString :: BS.ByteString -> ROM
 romFromByteString bs = ROM romVector
-    where (fptr, len) = BSI.toForeignPtr0 bs
-          romVector = V.unsafeFromForeignPtr0 fptr len
+    where (fptr, off, len) = BSI.toForeignPtr bs
+          romVector = V.unsafeFromForeignPtr fptr off len
 
 -- | @readROM rom addr@ reads the byte at @addr@ from the RAM.
 readROM :: ROM -> Word16 -> Word8
