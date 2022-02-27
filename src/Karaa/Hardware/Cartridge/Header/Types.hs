@@ -1,12 +1,27 @@
-module Karaa.Hardware.Cartridge.Header.Types ( CartridgeType(..)
-                                             , CartridgeRegion(..)
-                                             , CartridgeCode(..)
-                                             , CGBFlag(..)
+module Karaa.Hardware.Cartridge.Header.Types ( 
+                                               CartridgeHeader(..)
                                              , LicenseeCode(..)
-                                             , CartridgeMapper(..)
+                                             , CGBFlag(..)
+                                               -- * Cartridge codes 
+                                             , CartridgeCode(..)
+                                             , CartridgeType(..)
+                                             , CartridgeRegion(..)
+                                               -- * Mappers
                                              , HasRAM(..), HasBattery(..), HasRTC(..), HasRumble(..)
+                                             , CartridgeMapper( ROMOnly
+                                                              , MBC1
+                                                              , MBC2
+                                                              , MMM01
+                                                              , MBC3
+                                                              , MBC5
+                                                              , MBC6
+                                                              , MBC7
+                                                              , PocketCamera
+                                                              , BandaiTAMA5
+                                                              , HudsonHuC3
+                                                              , HudsonHuC1
+                                                              )
                                              , mapperHasRAM, mapperHasBattery, mapperHasRTC, mapperHasRumble
-                                             , CartridgeHeader(..)
                                              ) where
 
 import qualified Data.ByteString as BS
