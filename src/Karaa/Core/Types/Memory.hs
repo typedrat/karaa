@@ -24,7 +24,7 @@ import           Karaa.Core.Types.WithMonadIO ( WithMonadIO )
 newtype ROM = ROM (V.Vector Word8)
 
 instance Show ROM where
-    show (ROM v) = "ROM of size " ++ show (V.length v)
+    showsPrec p (ROM v) = showParen (p > 10) $ showString "ROM of size " . showsPrec 11 (V.length v)
 
 -- | Get the size of the ROM in bytes.
 romSize :: ROM -> Int
@@ -50,7 +50,7 @@ rawReadROM (ROM romVector) = V.unsafeIndex romVector
 newtype RAM = RAM (MV.IOVector Word8)
 
 instance Show RAM where
-    show (RAM v) = "RAM of size " ++ show (MV.length v)
+    showsPrec p (RAM v) = showParen (p > 10) $ showString "RAM of size " . showsPrec 11 (MV.length v)
 
 -- | Get the size of the RAM in bytes.
 ramSize :: RAM -> Int
