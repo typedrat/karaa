@@ -68,10 +68,10 @@ load (HimemIndirect op) = do
     readAddr addr
 
 store :: Operand 'RW a -> a -> Karaa ()
-store (Register reg) val = assign (register reg) val
+store (Register reg)    val = assign (register reg) val
 store (WideRegister wr) val = assign (wideRegister wr) val
-store (Flag fl) val = assign (flag fl) val
-store (NotFlag fl) val = assign (flag fl) (not val)
+store (Flag fl)         val = assign (flag fl) val
+store (NotFlag fl)      val = assign (flag fl) (not val)
 
 store (Indirect op) val = do
     addr <- load op
