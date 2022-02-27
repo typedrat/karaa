@@ -9,6 +9,8 @@ import Karaa.Core.Types.WithMonadIO  ( WithMonadIO(..) )
 import Karaa.CPU.Interrupts          ( HasIRQState(..), MonadInterrupt(..), WithIRQState(..) )
 import Karaa.CPU.Registers           ( HasRegisterFile(..) )
 import Karaa.CPU.State               ( CPUState, HasCPUState(..) )
+
+import Karaa.Hardware.Cartridge
 import Karaa.Hardware.State
 import Karaa.Hardware.Serial
 import Karaa.Hardware.WorkRAM
@@ -18,6 +20,8 @@ import Karaa.Hardware.WorkRAM
 
 data EmulatorState = EmulatorState { emuCPUState :: CPUState, emuHardwareState :: HardwareState }
                    deriving (Show)
+
+--
 
 instance HasRegisterFile EmulatorState where
     registerFile = cpuState . registerFile
@@ -30,6 +34,12 @@ instance HasIRQState EmulatorState where
 instance HasCPUState EmulatorState where
     cpuState = lens (\EmulatorState { emuCPUState } -> emuCPUState) (\st emuCPUState -> st { emuCPUState })
     {-# INLINE cpuState #-}
+
+--
+
+instance HasCartridge EmulatorState where
+    cartridge = hardwareState . cartridge
+    {-# INLINE cartridge #-}
 
 instance HasSerialPort EmulatorState where
     serialPort = hardwareState . serialPort

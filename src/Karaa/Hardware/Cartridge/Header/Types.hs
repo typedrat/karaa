@@ -58,8 +58,8 @@ data LicenseeCode = NewLicenseeCode BS.ByteString
                   deriving (Eq)
 
 instance Show LicenseeCode where
-    show (NewLicenseeCode str) = "NewLicenseeCode "   ++ show str
-    show (OldLicenseeCode w8)  = "OldLicenseeCode 0x" ++ showHex w8
+    show (NewLicenseeCode str) = "NewLicenseeCode " ++ show str
+    show (OldLicenseeCode w8)  = "OldLicenseeCode " ++ showHex w8
 
 --
 

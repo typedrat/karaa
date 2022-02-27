@@ -31,8 +31,11 @@ library
                      , Karaa.CPU.Interrupts.Internal
                      , Karaa.CPU.Registers
                      , Karaa.CPU.State
+                     , Karaa.Hardware.Cartridge
                      , Karaa.Hardware.Cartridge.Header
                      , Karaa.Hardware.Cartridge.Header.Types
+                     , Karaa.Hardware.Cartridge.Mappers
+                     , Karaa.Hardware.Cartridge.Mappers.ROMOnly
                      , Karaa.Hardware.Serial
                      , Karaa.Hardware.State
                      , Karaa.Hardware.WorkRAM
