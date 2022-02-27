@@ -60,42 +60,42 @@ cartTitle = do
 cartSupportsSGB :: Parser Bool
 cartSupportsSGB = (== 0x03) <$> word8
 
-cartMapperInfo :: Parser MapperInfo
+cartMapperInfo :: Parser CartridgeMapper
 cartMapperInfo = label "mapper type" $ word8 >>= \case
-    0x00 -> pure $ makeMapperInfo ROMOnly
+    0x00 -> pure   ROMOnly
     
-    0x01 -> pure $  makeMapperInfo MBC1
-    0x02 -> pure $ (makeMapperInfo MBC1) { hasRAM = True }
-    0x03 -> pure $ (makeMapperInfo MBC1) { hasRAM = True, hasBattery = True }
+    0x01 -> pure $ MBC1 WithoutRAM WithoutBattery
+    0x02 -> pure $ MBC1 WithRAM    WithoutBattery
+    0x03 -> pure $ MBC1 WithRAM    WithBattery
     
-    0x05 -> pure $  makeMapperInfo MBC2
-    0x06 -> pure $ (makeMapperInfo MBC2) { hasBattery = True }
+    0x05 -> pure $ MBC2 WithoutBattery
+    0x06 -> pure $ MBC2 WithBattery
     
-    0x0B -> pure $  makeMapperInfo MMM01
-    0x0C -> pure $ (makeMapperInfo MMM01) { hasRAM = True }
-    0x0D -> pure $ (makeMapperInfo MMM01) { hasRAM = True, hasBattery = True }
+    0x0B -> pure $ MMM01 WithoutRAM WithoutBattery
+    0x0C -> pure $ MMM01 WithRAM    WithoutBattery
+    0x0D -> pure $ MMM01 WithRAM    WithBattery
 
-    0x0F -> pure $ (makeMapperInfo MBC3) { hasBattery = True, hasRTC = True }
-    0x10 -> pure $ (makeMapperInfo MBC3) { hasRAM = True, hasBattery = True, hasRTC = True }
-    0x11 -> pure $  makeMapperInfo MBC3
-    0x12 -> pure $ (makeMapperInfo MBC3) { hasRAM = True }
-    0x13 -> pure $ (makeMapperInfo MBC3) { hasRAM = True, hasBattery = True }
+    0x0F -> pure $ MBC3 WithoutRAM WithBattery    WithRTC
+    0x10 -> pure $ MBC3 WithRAM    WithBattery    WithRTC
+    0x11 -> pure $ MBC3 WithoutRAM WithoutBattery WithoutRTC
+    0x12 -> pure $ MBC3 WithRAM    WithoutBattery WithoutRTC
+    0x13 -> pure $ MBC3 WithRAM    WithBattery    WithoutRTC
 
-    0x19 -> pure $  makeMapperInfo MBC5
-    0x1A -> pure $ (makeMapperInfo MBC5) { hasRAM = True }
-    0x1B -> pure $ (makeMapperInfo MBC5) { hasRAM = True, hasBattery = True }
-    0x1C -> pure $ (makeMapperInfo MBC5) { hasRumble = True }
-    0x1D -> pure $ (makeMapperInfo MBC5) { hasRAM = True, hasRumble = True }
-    0x1E -> pure $ (makeMapperInfo MBC5) { hasRAM = True, hasBattery = True, hasRumble = True }
+    0x19 -> pure $ MBC5 WithoutRAM WithoutBattery WithoutRumble
+    0x1A -> pure $ MBC5 WithRAM    WithoutBattery WithoutRumble
+    0x1B -> pure $ MBC5 WithRAM    WithBattery    WithoutRumble
+    0x1C -> pure $ MBC5 WithoutRAM WithoutBattery WithRumble
+    0x1D -> pure $ MBC5 WithRAM    WithoutBattery WithRumble
+    0x1E -> pure $ MBC5 WithRAM    WithBattery    WithRumble
 
-    0x20 -> pure $  makeMapperInfo MBC6
+    0x20 -> pure   MBC6
 
-    0x22 -> pure $ (makeMapperInfo MBC7) { hasRAM = True, hasBattery = True, hasRumble = True }
+    0x22 -> pure   MBC7
 
-    0xFC -> pure $  makeMapperInfo PocketCamera
-    0xFD -> pure $  makeMapperInfo BandaiTAMA5
-    0xFE -> pure $  makeMapperInfo HudsonHuC3
-    0xFF -> pure $ (makeMapperInfo HudsonHuC1) { hasRAM = True, hasBattery = True }
+    0xFC -> pure   PocketCamera
+    0xFD -> pure   BandaiTAMA5
+    0xFE -> pure   HudsonHuC3
+    0xFF -> pure   HudsonHuC1
 
     code -> unexpected (Tokens $ NE.singleton code)
 
@@ -176,6 +176,3 @@ cgbFlagByte _    = DMGOnly
 
 isAsciiByte :: Word8 -> Bool
 isAsciiByte b = b > 0x1F && b < 0x7F
-
-makeMapperInfo :: CartridgeMapper -> MapperInfo
-makeMapperInfo mapper = MapperInfo mapper False False False False

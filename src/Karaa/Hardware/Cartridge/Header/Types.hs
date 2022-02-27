@@ -4,7 +4,8 @@ module Karaa.Hardware.Cartridge.Header.Types ( CartridgeType(..)
                                              , CGBFlag(..)
                                              , LicenseeCode(..)
                                              , CartridgeMapper(..)
-                                             , MapperInfo(..)
+                                             , HasRAM(..), HasBattery(..), HasRTC(..), HasRumble(..)
+                                             , mapperHasRAM, mapperHasBattery, mapperHasRTC, mapperHasRumble
                                              , CartridgeHeader(..)
                                              ) where
 
@@ -45,12 +46,26 @@ instance Show LicenseeCode where
     show (NewLicenseeCode str) = "NewLicenseeCode "   ++ show str
     show (OldLicenseeCode w8)  = "OldLicenseeCode 0x" ++ showHex w8
 
+--
+
+data HasRAM = WithRAM | WithoutRAM
+            deriving (Eq, Show)
+
+data HasBattery = WithBattery | WithoutBattery
+                deriving (Eq, Show)
+
+data HasRTC = WithRTC | WithoutRTC
+            deriving (Eq, Show)
+
+data HasRumble = WithRumble | WithoutRumble
+               deriving (Eq, Show)
+
 data CartridgeMapper = ROMOnly
-                     | MBC1
-                     | MBC2
-                     | MMM01
-                     | MBC3
-                     | MBC5
+                     | MBC1         { hasRAM :: HasRAM, hasBattery :: HasBattery }
+                     | MBC2         { hasBattery :: HasBattery }
+                     | MMM01        { hasRAM :: HasRAM, hasBattery :: HasBattery }
+                     | MBC3         { hasRAM :: HasRAM, hasBattery :: HasBattery, hasRTC :: HasRTC }
+                     | MBC5         { hasRAM :: HasRAM, hasBattery :: HasBattery, hasRumble :: HasRumble }
                      | MBC6
                      | MBC7
                      | PocketCamera
@@ -59,13 +74,39 @@ data CartridgeMapper = ROMOnly
                      | HudsonHuC1
                      deriving (Show, Eq)
 
-data MapperInfo = MapperInfo { cartridgeMapper :: CartridgeMapper
-                             , hasRAM          :: Bool
-                             , hasBattery      :: Bool
-                             , hasRTC          :: Bool
-                             , hasRumble       :: Bool
-                             }
-                deriving (Show, Eq)
+mapperHasRAM :: CartridgeMapper -> HasRAM
+mapperHasRAM (MBC1  { hasRAM }) = hasRAM
+mapperHasRAM (MBC2  {        }) = WithRAM
+mapperHasRAM (MMM01 { hasRAM }) = hasRAM
+mapperHasRAM (MBC3  { hasRAM }) = hasRAM
+mapperHasRAM (MBC5  { hasRAM }) = hasRAM
+mapperHasRAM  MBC7              = WithRAM
+mapperHasRAM  HudsonHuC3        = WithRAM
+mapperHasRAM  HudsonHuC1        = WithRAM
+mapperHasRAM  _                 = WithoutRAM
+
+mapperHasBattery :: CartridgeMapper -> HasBattery
+mapperHasBattery (MBC1  { hasBattery }) = hasBattery
+mapperHasBattery (MBC2  { hasBattery }) = hasBattery
+mapperHasBattery (MMM01 { hasBattery }) = hasBattery
+mapperHasBattery (MBC3  { hasBattery }) = hasBattery
+mapperHasBattery (MBC5  { hasBattery }) = hasBattery
+mapperHasBattery  MBC7                  = WithBattery
+mapperHasBattery  HudsonHuC3            = WithBattery
+mapperHasBattery  HudsonHuC1            = WithBattery
+mapperHasBattery  _                     = WithoutBattery
+
+mapperHasRTC :: CartridgeMapper -> HasRTC
+mapperHasRTC (MBC3 { hasRTC }) = hasRTC
+mapperHasRTC BandaiTAMA5       = WithRTC
+mapperHasRTC _                 = WithoutRTC
+
+mapperHasRumble :: CartridgeMapper -> HasRumble
+mapperHasRumble (MBC5 { hasRumble }) = hasRumble
+mapperHasRumble  MBC7                = WithRumble
+mapperHasRumble  _                   = WithoutRumble
+
+--
 
 data CartridgeHeader = CartridgeHeader { validLogo        :: Bool
                                        , gameTitle        :: BS.ByteString
@@ -73,7 +114,7 @@ data CartridgeHeader = CartridgeHeader { validLogo        :: Bool
                                        , cgbFlag          :: CGBFlag
                                        , licenseeCode     :: LicenseeCode
                                        , supportsSGB      :: Bool
-                                       , mapperInfo       :: MapperInfo
+                                       , mapperInfo       :: CartridgeMapper
                                        , cartridgeROMSize :: Int
                                        , cartridgeRAMSize :: Int
                                        , isJapaneseMarket :: Bool
