@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedLists #-}
 module Karaa.Hardware.Cartridge.Header ( module Karaa.Hardware.Cartridge.Header.Types
                                        , parseHeader
-                                       , verifyHeaderChecksum
+                                       , parseHeader'
                                        ) where
 
 import           Data.Bits                   ( shiftL )
@@ -145,17 +145,15 @@ cartHeader = do
 
     return CartridgeHeader{..}
 
+-- | Parse the cartridge header of a "standard" ROM. This will only get the first cartridge header
+--   when used with dumps of multicarts!
 parseHeader :: BS.ByteString -> Maybe CartridgeHeader
-parseHeader bs = parseMaybe cartHeader header
-    where header = BS.take 0x4C (BS.drop 0x104 bs)
+parseHeader = parseHeader' . BS.take 0x4C . BS.drop 0x104
 
---
-
-verifyHeaderChecksum :: CartridgeHeader -> BS.ByteString -> Bool
-verifyHeaderChecksum (CartridgeHeader { headerChecksum }) bs = calculated == headerChecksum
-    where 
-        header = BS.take 0x19 (BS.drop 0x134 bs)
-        calculated = BS.foldr (\i x -> x - i - 1) 0 header
+-- | Parse the cartridge header itself. The bytestring must contain exactly the cartridge header
+--   itself. In a standard cartridge, this is the area from from @0x0104@ to @0x014F@.
+parseHeader' :: BS.ByteString -> Maybe CartridgeHeader
+parseHeader' = parseMaybe cartHeader
 
 --
 
