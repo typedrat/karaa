@@ -7,7 +7,6 @@ module Karaa.Hardware.Cartridge.Header.Types (
                                              , CartridgeType(..)
                                              , CartridgeRegion(..)
                                                -- * Mappers
-                                             , HasRAM(..), HasBattery(..), HasRTC(..), HasRumble(..)
                                              , CartridgeMapper( ROMOnly
                                                               , MBC1
                                                               , MBC2
@@ -21,6 +20,7 @@ module Karaa.Hardware.Cartridge.Header.Types (
                                                               , HudsonHuC3
                                                               , HudsonHuC1
                                                               )
+                                             , HasRAM(..), HasBattery(..), HasRTC(..), HasRumble(..)
                                              , mapperHasRAM, mapperHasBattery, mapperHasRTC, mapperHasRumble
                                              ) where
 

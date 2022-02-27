@@ -150,8 +150,8 @@ cartHeader = do
 parseHeader :: BS.ByteString -> Maybe CartridgeHeader
 parseHeader = parseHeader' . BS.take 0x4C . BS.drop 0x104
 
--- | Parse the cartridge header itself. The bytestring must contain exactly the cartridge header
---   itself. In a standard cartridge, this is the area from from @0x0104@ to @0x014F@.
+-- | Parse the cartridge header itself. The bytestring must contain exactly the cartridge header!
+--   In a standard cartridge, this is the area from from @0x0104@ to @0x014F@.
 parseHeader' :: BS.ByteString -> Maybe CartridgeHeader
 parseHeader' = parseMaybe cartHeader
 
