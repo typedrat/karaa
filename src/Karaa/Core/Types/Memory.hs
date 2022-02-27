@@ -1,3 +1,8 @@
+{-|
+Module: Karaa.Core.Types.Memory
+
+Types used to represent emulated ROM, RAM, and banked addressing modes thereof.
+-}
 module Karaa.Core.Types.Memory ( -- * ROM
                                  ROM(), romSize, romFromByteString, readROM, rawReadROM
                                  -- * RAM
@@ -16,7 +21,7 @@ import qualified Data.Vector.Storable.Mutable as MV
 import           Data.Word                    ( Word8, Word16 )
 
 import           Karaa.Util.Hex               ( showHex )
-import           Karaa.Core.Types.WithMonadIO ( WithMonadIO )  
+import           Karaa.Core.Types.WithMonadIO ( WithMonadIO(..) )  
 
 --
 
@@ -87,6 +92,8 @@ instance (MonadIO m) => MonadRAM (WithMonadIO m) where
     
     rawWriteRAM (RAM v) addr byte = liftIO $ MV.unsafeWrite v addr byte
     {-# INLINE rawWriteRAM #-}
+
+deriving via WithMonadIO IO instance MonadRAM IO
 
 instance (MonadRAM m) => MonadRAM (MaybeT m) where
     newRAM size = lift $ newRAM size
