@@ -29,6 +29,7 @@ library
                      , Karaa.CPU.Instructions.Types
                      , Karaa.CPU.Interrupts
                      , Karaa.CPU.Interrupts.Internal
+                     , Karaa.CPU.LoadStore
                      , Karaa.CPU.Registers
                      , Karaa.CPU.State
                      , Karaa.Hardware.Cartridge
