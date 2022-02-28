@@ -2,7 +2,7 @@ module Karaa.CPU.LoadStore ( load, store ) where
 
 import Control.Applicative            ( Alternative(..) )
 import Control.Lens.Combinators       ( use, assign )
-import Control.Lens.Operators         ( (^.) )
+import Control.Lens.Operators         ( (^.), (<<+=) )
 import Control.Monad.Trans.Maybe      ( runMaybeT )
 import Data.Bits                      ( Bits(..) )
 import Data.Maybe                     ( fromMaybe )
@@ -32,16 +32,15 @@ load (Register reg)    = use (register reg)
 load (WideRegister wr) = use (wideRegister wr)
 load (Flag fl)         = use (flag fl) 
 load (NotFlag fl)      = not <$> use (flag fl)
-load ImmediateWord8    = readAddr =<< use (wideRegister PC)
-load ImmediateInt8     = fmap fromIntegral . readAddr =<< use (wideRegister PC)
+load ImmediateWord8    = readAddr =<< (wideRegister PC <<+= 1)
+load ImmediateInt8     = fmap fromIntegral . readAddr =<< (wideRegister PC <<+= 1)
 load (Indirect op)     = readAddr =<< load op
 
 load ImmediateWord16 = do
-    addr <- use $ wideRegister PC
-    lowerByte <- fromIntegral <$> readAddr addr
+    lowerByte <- readAddr =<< (wideRegister PC <<+= 1)
     tick
-    upperByte <- fromIntegral <$> readAddr (addr + 1)
-    return $ (upperByte `shiftL` 8) .|. lowerByte
+    upperByte <- readAddr =<< (wideRegister PC <<+= 1)
+    return $ fromIntegral (upperByte `shiftL` 8) .|. fromIntegral lowerByte
 
 load (IndirectWord16 op) = do
     addr <- load op
