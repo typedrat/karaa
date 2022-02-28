@@ -30,16 +30,16 @@ instance HasCartridge Cartridge where
 readCartridge :: (MonadState s m, HasCartridge s) => Word16 -> MaybeT m Word8
 readCartridge addr = use cartridge >>= \case
         ROMOnlyCartridge roc -> hoistMaybe $ readROMOnlyCartridge roc addr
-{-# INLINABLE readCartridge #-}
+{-# INLINE readCartridge #-}
 
 writeCartridge :: (MonadState s m, HasCartridge s) => Word16 -> Word8 -> m ()
 writeCartridge _ _ = use cartridge >>= \case
     _ -> return ()
-{-# INLINABLE writeCartridge #-}
+{-# INLINE writeCartridge #-}
 
 tickCartridge :: (MonadState s m, HasCartridge s) => m ()
 tickCartridge = return ()
-{-# INLINABLE tickCartridge #-}
+{-# INLINE tickCartridge #-}
 
 --
 

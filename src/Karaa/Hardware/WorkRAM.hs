@@ -34,7 +34,7 @@ readWorkRAM addr
     | addr >= 0xC000, addr <= 0xDFFF = use workRAM >>= \case
         DMGWorkRAM ram -> readRAM ram (addr - 0xC000)
     | otherwise                      = empty
-{-# INLINEABLE readWorkRAM #-}
+{-# INLINE readWorkRAM #-}
 
 writeWorkRAM :: (MonadState s m, HasWorkRAM s, MonadRAM m) => Word16 -> Word8 -> m ()
 writeWorkRAM addr byte
@@ -44,4 +44,4 @@ writeWorkRAM addr byte
     | addr >= 0xC000, addr <= 0xDFFF = use workRAM >>= \case
         DMGWorkRAM ram -> writeRAM ram (addr - 0xC000) byte
     | otherwise                      = return ()
-{-# INLINEABLE writeWorkRAM #-}
+{-# INLINE writeWorkRAM #-}

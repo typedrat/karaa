@@ -89,7 +89,7 @@ readSerialPortRegisters 0xFF02 = do
     
     return regValue
 readSerialPortRegisters _ = empty
-{-# INLINEABLE readSerialPortRegisters #-}
+{-# INLINE readSerialPortRegisters #-}
 
 -- | Handle writes to the serial port registers.
 writeSerialPortRegisters :: (MonadState s m, HasSerialPort s) => Word16 -> Word8 -> m ()
@@ -104,7 +104,7 @@ writeSerialPortRegisters 0xFF02 byte =
            }
 writeSerialPortRegisters _      _    =
     return ()
-{-# INLINEABLE writeSerialPortRegisters #-}
+{-# INLINE writeSerialPortRegisters #-}
 
 -- | Advance the simulation of the serial port by one M-cycle.
 tickSerialPort :: (MonadState s m, HasSerialPort s, MonadInterrupt m, MonadIO m) => m ()
@@ -136,7 +136,7 @@ tickSerialPort = use serialPort >>= \case
 
             else serialPort .= port { currentTicks = currentTicks + 1 }
     _ -> return ()
-{-# INLINABLE tickSerialPort #-}
+{-# INLINE tickSerialPort #-}
 
 clockSourceBit :: Iso' Bool ClockSource
 clockSourceBit = iso from to

@@ -25,20 +25,20 @@ readHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> Ma
 readHardware addr = readWorkRAM addr
                 <|> readCartridge addr
                 <|> readSerialPortRegisters addr
-{-# INLINABLE readHardware #-}
+{-# INLINE readHardware #-}
 
 writeHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> Word8 -> m ()
 writeHardware addr byte = do
     writeWorkRAM addr byte
     writeCartridge addr byte
     writeSerialPortRegisters addr byte
-{-# INLINABLE writeHardware #-}
+{-# INLINE writeHardware #-}
 
 tickHardware :: (MonadState s m, HasHardwareState s, MonadInterrupt m, MonadIO m) => m ()
 tickHardware = do
     tickCartridge
     tickSerialPort
-{-# INLINABLE tickHardware #-}
+{-# INLINE tickHardware #-}
 
 --
 
