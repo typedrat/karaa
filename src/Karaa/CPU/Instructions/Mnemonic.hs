@@ -7,9 +7,9 @@ module Karaa.CPU.Instructions.Mnemonic ( toMnemonic, toCBMnemonic ) where
 
 import Prettyprinter
 
-import Karaa.CPU.Instructions.Operand ( Operand(Register) )
+import Karaa.CPU.Instructions.Operand ( Operand(Register, WideRegister) )
 import Karaa.CPU.Instructions.Types   ( Instruction(..), UsesCarry(..), CBInstruction(..) )
-import Karaa.CPU.Registers            ( Register(A) )
+import Karaa.CPU.Registers            ( Register(A), WideRegister(PC, HL) )
 
 args :: [Doc ann] -> Doc ann
 args = mconcat . punctuate comma
@@ -17,55 +17,58 @@ args = mconcat . punctuate comma
 -- | Converts an 'Instruction' into a standard assembler-mnemonic-style textual representation, if the instruction
 --   is close enough to the actual hardware limits of the GameBoy's processor to have a canonical representation.
 toMnemonic :: Instruction -> Maybe (Doc ann)
-toMnemonic (Load dst src)                        = Just $ "LD" <+> args [pretty dst, pretty src]
+toMnemonic (Load8  dst src)                             = Just $ "LD" <+> args [pretty dst, pretty src]
+toMnemonic (Load16 (WideRegister PC) (WideRegister HL)) = Just   "JP HL"
+toMnemonic (Load16 dst src)                             = Just $ "LD" <+> args [pretty dst, pretty src]
 
-toMnemonic (AddWord8 dst src WithoutCarry)       = Just $ "ADD" <+> args [pretty dst, pretty src]
-toMnemonic (AddWord8 dst src WithCarry)          = Just $ "ADC" <+> args [pretty dst, pretty src]
-toMnemonic (SubtractWord8 dst src WithoutCarry)  = Just $ "SUB" <+> args [pretty dst, pretty src]
-toMnemonic (SubtractWord8 dst src WithCarry)     = Just $ "SBC" <+> args [pretty dst, pretty src]
-toMnemonic (AndWord8 dst src)                    = Just $ "AND" <+> args [pretty dst, pretty src]
-toMnemonic (XORWord8 dst src)                    = Just $ "XOR" <+> args [pretty dst, pretty src]
-toMnemonic (OrWord8 dst src)                     = Just $ "OR"  <+> args [pretty dst, pretty src]
-toMnemonic (CompareWord8 dst src)                = Just $ "CP"  <+> args [pretty dst, pretty src]
-toMnemonic (IncrementWord8 op)                   = Just $ "INC" <+> pretty op
-toMnemonic (DecrementWord8 op)                   = Just $ "DEC" <+> pretty op
-toMnemonic (DecimalAdjustWord8 (Register A))     = Just   "DAA"
-toMnemonic (ComplementWord8 (Register A))        = Just   "CPL"
+toMnemonic (AddWord8 dst src WithoutCarry)              = Just $ "ADD" <+> args [pretty dst, pretty src]
+toMnemonic (AddWord8 dst src WithCarry)                 = Just $ "ADC" <+> args [pretty dst, pretty src]
+toMnemonic (SubtractWord8 dst src WithoutCarry)         = Just $ "SUB" <+> args [pretty dst, pretty src]
+toMnemonic (SubtractWord8 dst src WithCarry)            = Just $ "SBC" <+> args [pretty dst, pretty src]
+toMnemonic (AndWord8 dst src)                           = Just $ "AND" <+> args [pretty dst, pretty src]
+toMnemonic (XORWord8 dst src)                           = Just $ "XOR" <+> args [pretty dst, pretty src]
+toMnemonic (OrWord8 dst src)                            = Just $ "OR"  <+> args [pretty dst, pretty src]
+toMnemonic (CompareWord8 dst src)                       = Just $ "CP"  <+> args [pretty dst, pretty src]
+toMnemonic (IncrementWord8 op)                          = Just $ "INC" <+> pretty op
+toMnemonic (DecrementWord8 op)                          = Just $ "DEC" <+> pretty op
+toMnemonic (DecimalAdjustWord8 (Register A))            = Just   "DAA"
+toMnemonic (ComplementWord8 (Register A))               = Just   "CPL"
 
-toMnemonic (AddWord16 dst src)                   = Just $ "ADD" <+> args [pretty dst, pretty src]
-toMnemonic (IncrementWord16 op)                  = Just $ "INC" <+> pretty op
-toMnemonic (DecrementWord16 op)                  = Just $ "DEC" <+> pretty op
-toMnemonic (AddSigned dst src)                   = Just $ "ADD" <+> args [pretty dst, pretty src]
-toMnemonic (LoadSigned dst src off)              = Just $ "LD"  <+> args [pretty dst, pretty src <> "+" <> pretty off]
+toMnemonic (AddWord16 dst src)                          = Just $ "ADD" <+> args [pretty dst, pretty src]
+toMnemonic (IncrementWord16 op)                         = Just $ "INC" <+> pretty op
+toMnemonic (DecrementWord16 op)                         = Just $ "DEC" <+> pretty op
+toMnemonic (AddSigned dst src)                          = Just $ "ADD" <+> args [pretty dst, pretty src]
+toMnemonic (LoadSigned dst src off)                     = Just $ "LD"  <+> args [pretty dst, pretty src <> "+" <> pretty off]
 
-toMnemonic (RotateRegALeft WithoutCarry)         = Just   "RLCA"
-toMnemonic (RotateRegALeft WithCarry)            = Just   "RLA"
-toMnemonic (RotateRegARight WithoutCarry)        = Just   "RRCA"
-toMnemonic (RotateRegARight WithCarry)           = Just   "RRA"
+toMnemonic (RotateRegALeft WithoutCarry)                = Just   "RLCA"
+toMnemonic (RotateRegALeft WithCarry)                   = Just   "RLA"
+toMnemonic (RotateRegARight WithoutCarry)               = Just   "RRCA"
+toMnemonic (RotateRegARight WithCarry)                  = Just   "RRA"
 
-toMnemonic (Push op)                             = Just $ "PUSH" <+> pretty op
-toMnemonic (Pop op)                              = Just $ "POP" <+> pretty op
+toMnemonic (Push op)                                    = Just $ "PUSH" <+> pretty op
+toMnemonic (Pop op)                                     = Just $ "POP"  <+> pretty op
+toMnemonic (SaveStackPointer dst)                       = Just $ "LD"   <+> args [pretty dst, "SP"]
 
-toMnemonic ToggleCarryFlag                       = Just   "CCF"
-toMnemonic SetCarryFlag                          = Just   "SCF"
-toMnemonic NoOperation                           = Just   "NOP"
-toMnemonic Halt                                  = Just   "HALT"
-toMnemonic Stop                                  = Just   "STOP"
-toMnemonic EnableInterrupts                      = Just   "EI"
-toMnemonic DisableInterrupts                     = Just   "DI"
+toMnemonic ToggleCarryFlag                              = Just   "CCF"
+toMnemonic SetCarryFlag                                 = Just   "SCF"
+toMnemonic NoOperation                                  = Just   "NOP"
+toMnemonic Halt                                         = Just   "HALT"
+toMnemonic Stop                                         = Just   "STOP"
+toMnemonic EnableInterrupts                             = Just   "EI"
+toMnemonic DisableInterrupts                            = Just   "DI"
 
-toMnemonic (AbsoluteJump target)                 = Just $ "JP"   <+> pretty target
-toMnemonic (ConditionalAbsoluteJump flag target) = Just $ "JP"   <+> args [pretty flag, pretty target]
-toMnemonic (RelativeJump target)                 = Just $ "JR"   <+> pretty target
-toMnemonic (ConditionalRelativeJump flag target) = Just $ "JR"   <+> args [pretty flag, pretty target]
-toMnemonic (Call target)                         = Just $ "CALL" <+> pretty target
-toMnemonic (ConditionalCall flag target)         = Just $ "CALL" <+> args [pretty flag, pretty target]
-toMnemonic Return                                = Just   "RET"
-toMnemonic (ConditionalReturn flag)              = Just $ "RET" <+> pretty flag
-toMnemonic ReturnAndEnableInterrupts             = Just   "RETI"
-toMnemonic (Reset target)                        = Just $ "RST" <+> pretty (target `div` 8)
+toMnemonic (AbsoluteJump target)                        = Just $ "JP"   <+> pretty target
+toMnemonic (ConditionalAbsoluteJump flag target)        = Just $ "JP"   <+> args [pretty flag, pretty target]
+toMnemonic (RelativeJump target)                        = Just $ "JR"   <+> pretty target
+toMnemonic (ConditionalRelativeJump flag target)        = Just $ "JR"   <+> args [pretty flag, pretty target]
+toMnemonic (Call target)                                = Just $ "CALL" <+> pretty target
+toMnemonic (ConditionalCall flag target)                = Just $ "CALL" <+> args [pretty flag, pretty target]
+toMnemonic Return                                       = Just   "RET"
+toMnemonic (ConditionalReturn flag)                     = Just $ "RET"  <+> pretty flag
+toMnemonic ReturnAndEnableInterrupts                    = Just   "RETI"
+toMnemonic (Reset target)                               = Just $ "RST"  <+> pretty (target `div` 8)
 
-toMnemonic _                                     = Nothing
+toMnemonic _                                            = Nothing
 
 -- | Converts a 'CBInstruction' into a standard assembler-mnemonic-style textual representation.
 toCBMnemonic :: CBInstruction -> Doc ann

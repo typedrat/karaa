@@ -47,17 +47,17 @@ cbInstructions = V.create $ do
 
 makeInstruction :: Int -> Int -> Int -> Instruction
 makeInstruction 0 0 0 = NoOperation
-makeInstruction 0 1 0 = Load (IndirectWord16 ImmediateWord16) (WideRegister SP)
+makeInstruction 0 1 0 = SaveStackPointer ImmediateWord16
 makeInstruction 0 2 0 = Stop
 makeInstruction 0 3 0 = RelativeJump ImmediateInt8
 makeInstruction 0 y 0 = ConditionalRelativeJump (cc ! (y - 4)) ImmediateInt8
 makeInstruction 0 y 1 = case q of
-        0 -> Load      (rp ! p)          ImmediateWord16
+        0 -> Load16    (rp ! p)          ImmediateWord16
         1 -> AddWord16 (WideRegister HL) (rp ! p)
     where (p, q) = y `divMod` 2
 makeInstruction 0 y 2 = case q of
-        0 -> Load (r2 ! p)     (Register A)
-        1 -> Load (Register A) (r2 ! p)
+        0 -> Load8 (r2 ! p)     (Register A)
+        1 -> Load8 (Register A) (r2 ! p)
     where (p, q) = y `divMod` 2
 makeInstruction 0 y 3 = case q of
         0 -> IncrementWord16 (rp ! p)
@@ -65,7 +65,7 @@ makeInstruction 0 y 3 = case q of
     where (p, q) = y `divMod` 2
 makeInstruction 0 y 4 = IncrementWord8 (r ! y)
 makeInstruction 0 y 5 = DecrementWord8 (r ! y)
-makeInstruction 0 y 6 = Load (r ! y) ImmediateWord8
+makeInstruction 0 y 6 = Load8 (r ! y) ImmediateWord8
 makeInstruction 0 0 7 = RotateRegALeft  WithoutCarry
 makeInstruction 0 1 7 = RotateRegARight WithoutCarry
 makeInstruction 0 2 7 = RotateRegALeft  WithCarry
@@ -76,12 +76,12 @@ makeInstruction 0 6 7 = SetCarryFlag
 makeInstruction 0 7 7 = ToggleCarryFlag
 
 makeInstruction 1 6 6 = Halt
-makeInstruction 1 y z = Load (r ! y) (r ! z)
+makeInstruction 1 y z = Load8 (r ! y) (r ! z)
 
 makeInstruction 2 y z = alu ! y $ r ! z
 
-makeInstruction 3 4 0 = Load (HimemIndirect ImmediateWord8) (Register A)
-makeInstruction 3 6 0 = Load (Register A)                   (HimemIndirect ImmediateWord8)
+makeInstruction 3 4 0 = Load8 (HimemIndirect ImmediateWord8) (Register A)
+makeInstruction 3 6 0 = Load8 (Register A)                   (HimemIndirect ImmediateWord8)
 makeInstruction 3 5 0 = AddSigned  (WideRegister SP)                   ImmediateInt8
 makeInstruction 3 7 0 = LoadSigned (WideRegister HL) (WideRegister SP) ImmediateInt8
 makeInstruction 3 y 0 = ConditionalReturn (cc ! y)
@@ -89,12 +89,12 @@ makeInstruction 3 y 1 = case y `divMod` 2 of
         (p, 0) -> Pop (rp2 ! p)
         (0, 1) -> Return
         (1, 1) -> ReturnAndEnableInterrupts
-        (2, 1) -> AbsoluteJump (WideRegister HL)
-        (3, 1) -> Load (WideRegister SP) (WideRegister HL)
-makeInstruction 3 4 2 = Load (HimemIndirect $ Register C) (Register A)
-makeInstruction 3 6 2 = Load (Register A)                 (HimemIndirect $ Register C)
-makeInstruction 3 5 2 = Load (Indirect ImmediateWord16)   (Register A)
-makeInstruction 3 7 2 = Load (Register A)                 (Indirect ImmediateWord16)
+        (2, 1) -> Load16 (WideRegister PC) (WideRegister HL)
+        (3, 1) -> Load16 (WideRegister SP) (WideRegister HL)
+makeInstruction 3 4 2 = Load8 (HimemIndirect $ Register C) (Register A)
+makeInstruction 3 6 2 = Load8 (Register A)                 (HimemIndirect $ Register C)
+makeInstruction 3 5 2 = Load8 (Indirect ImmediateWord16)   (Register A)
+makeInstruction 3 7 2 = Load8 (Register A)                 (Indirect ImmediateWord16)
 makeInstruction 3 y 2 = ConditionalAbsoluteJump (cc ! y) ImmediateWord16
 makeInstruction 3 0 3 = AbsoluteJump ImmediateWord16
 makeInstruction 3 1 3 = CBPrefix

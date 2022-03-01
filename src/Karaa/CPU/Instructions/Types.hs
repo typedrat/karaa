@@ -22,7 +22,8 @@ data UsesCarry = WithCarry | WithoutCarry
 --   is based on the instruction's /semantic meaning/.
 data Instruction where
     -- Load/store
-    Load :: !(Operand 'RW a) -> !(Operand mut a) -> Instruction
+    Load8  :: !(Operand 'RW Word8)  -> !(Operand mut Word8)  -> Instruction
+    Load16 :: !(Operand 'RW Word16) -> !(Operand mut Word16) -> Instruction
 
     -- 8-bit ALU
     AddWord8           :: !(Operand 'RW  Word8) -> !(Operand mut  Word8) -> !UsesCarry -> Instruction
@@ -48,8 +49,9 @@ data Instruction where
     RotateRegARight :: !UsesCarry -> Instruction
 
     -- Stack manipulation
-    Push :: !(Operand 'RW Word16) -> Instruction
-    Pop  :: !(Operand 'RW Word16) -> Instruction
+    Push             :: !(Operand 'RW Word16) -> Instruction
+    Pop              :: !(Operand 'RW Word16) -> Instruction
+    SaveStackPointer :: !(Operand mut Word16) -> Instruction
 
     -- CPU control
     ToggleCarryFlag   :: Instruction 

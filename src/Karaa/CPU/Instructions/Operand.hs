@@ -30,7 +30,6 @@ data Operand (mut :: Mutability) (a :: Type) where
     ImmediateInt8    ::                                          Operand 'RO Int8
     ImmediateWord16  ::                                          Operand 'RO Word16
     Indirect         :: !(Operand mut Word16)                 -> Operand 'RW Word8
-    IndirectWord16   :: !(Operand mut Word16)                 -> Operand 'RW Word16
     IndirectWithMode :: !(Operand 'RW Word16) -> !AddressMode -> Operand 'RW Word8
     -- | @HimemIndirect addr@ references the byte at @FF00 + addr@.
     HimemIndirect    :: !(Operand mut Word8)                  -> Operand 'RW Word8
@@ -56,7 +55,6 @@ instance Pretty (Operand mut a) where
     pretty ImmediateInt8                         = "i8"
     pretty ImmediateWord16                       = "u16"
     pretty (Indirect addr)                       = parens (pretty addr)
-    pretty (IndirectWord16 addr)                 = parens (pretty addr)
     pretty (IndirectWithMode addr PostIncrement) = parens (pretty addr <> "+")
     pretty (IndirectWithMode addr PostDecrement) = parens (pretty addr <> "-")
     pretty (HimemIndirect addr)                  = parens ("FF00+" <> pretty addr)
