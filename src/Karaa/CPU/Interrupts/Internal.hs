@@ -12,6 +12,7 @@ module Karaa.CPU.Interrupts.Internal ( -- * @IRQState@
                                      , readInterruptRegisters
                                      , writeInterruptRegisters
                                      , InterruptStatus(..)
+                                     , getInterruptStatus
                                      , setInterruptStatus
                                        -- * Setting, clearing, and checking interrupts
                                      , Interrupt( VBlankInterrupt, LCDStatInterrupt, TimerInterrupt, SerialInterrupt, JoypadInterrupt )
@@ -22,7 +23,7 @@ module Karaa.CPU.Interrupts.Internal ( -- * @IRQState@
                                      ) where
 
 import Control.Applicative       ( empty )
-import Control.Lens.Combinators  ( use, modifying )
+import Control.Lens.Combinators  ( use, uses, modifying )
 import Control.Lens.Lens         ( Lens' )
 import Control.Monad.State.Class ( MonadState)
 import Control.Monad.Trans.Maybe ( MaybeT )
@@ -70,6 +71,10 @@ writeInterruptRegisters 0xFFFF enableMask = modifying irqState (\st -> st { irqE
 writeInterruptRegisters _      _          = return ()
 {-# INLINE writeInterruptRegisters #-}
 
+-- | Gets the interrupt unit's IME flag.
+getInterruptStatus :: (MonadState s m, HasIRQState s) => m InterruptStatus
+getInterruptStatus = uses irqState (\IRQState { irqStatus } -> irqStatus)
+
 -- | Sets the interrupt unit's IME flag.
 setInterruptStatus :: (MonadState s m, HasIRQState s) => InterruptStatus -> m ()
 setInterruptStatus irqStatus = modifying irqState (\st -> st { irqStatus })
@@ -103,18 +108,17 @@ clearInterrupt (Interrupt irq) = modifying irqState $
     \st@(IRQState { irqFlags }) -> st { irqFlags = clearBit irqFlags irq }
 {-# INLINE clearInterrupt #-}
 
--- | Checks for enabled (@IME@ enabled), unmasked (@IE@ bit set), pending (@IF@ bit set) interrupts.
+-- | Checks for unmasked (@IE@ bit set), pending (@IF@ bit set) interrupts.
 checkForPendingInterrupt :: (MonadState s m, HasIRQState s) => m (Maybe Interrupt)
 checkForPendingInterrupt = do
-    IRQState { irqStatus, irqFlags, irqEnableMask } <- use irqState
+    IRQState { irqFlags, irqEnableMask } <- use irqState
 
-    case irqStatus of
-        InterruptsEnabled 
-            | firstInterrupt < 5 -> return (Just $ Interrupt firstInterrupt)
-            where
-                enabledInterrupts = irqFlags .&. irqEnableMask
-                firstInterrupt = countTrailingZeros enabledInterrupts
-        _ -> return Nothing
+    let enabledInterrupts = irqFlags .&. irqEnableMask
+        firstInterrupt = countTrailingZeros enabledInterrupts
+
+    return $ if firstInterrupt < 5 
+        then Just $ Interrupt firstInterrupt
+        else Nothing
 {-# INLINE checkForPendingInterrupt #-}
 
 --

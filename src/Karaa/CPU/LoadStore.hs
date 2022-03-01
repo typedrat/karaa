@@ -1,31 +1,15 @@
-module Karaa.CPU.LoadStore ( load, store ) where
+module Karaa.CPU.LoadStore ( load, store, postfixAddressOp ) where
 
-import Control.Applicative            ( Alternative(..) )
-import Control.Lens.Combinators       ( use, assign )
+import Control.Lens.Combinators       ( use, assign, modifying )
 import Control.Lens.Operators         ( (^.), (<<+=) )
-import Control.Monad.Trans.Maybe      ( runMaybeT )
 import Data.Bits                      ( Bits(..) )
-import Data.Maybe                     ( fromMaybe )
-import Data.Word                      ( Word8, Word16 )
+import Data.Word                      ( Word16 )
 
-import Karaa.Core.Monad               ( Karaa )
+import Karaa.Core.Monad               ( Karaa, readAddr, writeAddr, tick )
 import Karaa.CPU.Instructions.Operand ( Operand(..), AddressMode(..), Mutability(..) )
-import Karaa.CPU.Interrupts.Internal  ( readInterruptRegisters, writeInterruptRegisters )
 import Karaa.CPU.Registers            ( HasRegisterFile(..), WideRegister( PC ) )
-import Karaa.Hardware.State           ( readHardware, writeHardware, tickHardware )
 import Karaa.Util.ByteLenses          ( lower, upper )
 
-readAddr :: Word16 -> Karaa Word8
-readAddr addr = fmap (fromMaybe 0xFF) . runMaybeT $
-    readHardware addr <|> readInterruptRegisters addr
-
-writeAddr :: Word16 -> Word8 -> Karaa ()
-writeAddr addr byte = do
-    writeHardware addr byte
-    writeInterruptRegisters addr byte
-
-tick :: Karaa ()
-tick = tickHardware
 
 load :: Operand mut a -> Karaa a
 load (Register reg)    = use (register reg)
@@ -49,16 +33,10 @@ load (IndirectWord16 op) = do
     upperByte <- fromIntegral <$> readAddr (addr + 1)
     return $ (upperByte `shiftL` 8) .|. lowerByte
 
-load (IndirectWithMode op PostIncrement) = do
+load (IndirectWithMode op mode) = do
     addr <- load op
     val <- readAddr addr
-    store op (addr + 1)
-    return val
-
-load (IndirectWithMode op PostDecrement) = do
-    addr <- load op
-    val <- readAddr addr
-    store op (addr - 1)
+    postfixAddressOp op mode
     return val
 
 load (HimemIndirect op) = do
@@ -68,7 +46,7 @@ load (HimemIndirect op) = do
 
 store :: Operand 'RW a -> a -> Karaa ()
 store (Register reg)    val = assign (register reg) val
-store (WideRegister wr) val = assign (wideRegister wr) val
+store (WideRegister wr) val = assign (wideRegister wr) val <* tick
 store (Flag fl)         val = assign (flag fl) val
 store (NotFlag fl)      val = assign (flag fl) (not val)
 
@@ -82,17 +60,23 @@ store (IndirectWord16 op) val = do
     tick
     writeAddr (addr + 1) (val ^. upper)
 
-store (IndirectWithMode op PostIncrement) val = do
+store (IndirectWithMode op mode) val = do
     addr <- load op
     writeAddr addr val
-    store op (addr + 1)
-
-store (IndirectWithMode op PostDecrement) val = do
-    addr <- load op
-    writeAddr addr val
-    store op (addr - 1)
+    postfixAddressOp op mode
 
 store (HimemIndirect op) val = do
     lowerAddr <- load op
     let addr = 0xFF00 .|. fromIntegral lowerAddr
     writeAddr addr val
+
+-- | We specifically want to avoid calling 'store' in 'IndirectWithMode',
+--   because the implicit 'tick' when storing into a 16-bit register is
+--   inaccurate in this specific case.
+postfixAddressOp :: Operand 'RW Word16 -> AddressMode -> Karaa ()
+postfixAddressOp    (WideRegister wr)  mode = modifying (wideRegister wr) (addressModeToOp mode)
+postfixAddressOp op@(IndirectWord16 _) mode = store op . addressModeToOp mode =<< load op
+
+addressModeToOp :: AddressMode -> Word16 -> Word16
+addressModeToOp PostIncrement = (+ 1)
+addressModeToOp PostDecrement = subtract 1

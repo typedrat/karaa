@@ -1,4 +1,8 @@
-module Karaa.CPU.Instructions.Operand ( AddressMode(..), Mutability(..), Operand(..) ) where
+module Karaa.CPU.Instructions.Operand ( Operand(..)
+                                      , zeroFlag, subtractionFlag, halfCarryFlag, carryFlag
+                                      , AddressMode(..)
+                                      , Mutability(..)
+                                      ) where
 
 import Control.DeepSeq     ( NFData(..), rwhnf )
 import Data.Kind           ( Type )
@@ -6,7 +10,7 @@ import Data.Int            ( Int8 )
 import Data.Word           ( Word8, Word16 )
 import Prettyprinter       ( Pretty(..), parens )
 
-import Karaa.CPU.Registers ( WideRegister, Register, Flag )
+import Karaa.CPU.Registers ( WideRegister, Register, Flag(..) )
 
 -- | The special addressing modes of the GameBoy's CPU.
 data AddressMode = PostIncrement | PostDecrement
@@ -33,6 +37,11 @@ data Operand (mut :: Mutability) (a :: Type) where
 
 deriving instance Show (Operand mut a)
 
+zeroFlag, subtractionFlag, halfCarryFlag, carryFlag :: Operand 'RW Bool
+zeroFlag        = Flag Zero
+subtractionFlag = Flag Subtraction
+halfCarryFlag   = Flag HalfCarry
+carryFlag       = Flag Carry
 --
 
 instance NFData (Operand mut a) where

@@ -5,8 +5,13 @@ import Prettyprinter   ( Pretty )
 
 
 -- | A sum type for specifying a bit within a byte.
-newtype BitInByte = BitInByte { bitInByte :: Int {- ^ Get an integral representation of the given bit number. -}  }
+newtype BitInByte = BitInByte Int
                   deriving (Eq, Pretty, NFData)
+
+-- | Get an integral representation of the given bit number.
+bitInByte :: BitInByte -> Int
+bitInByte (BitInByte i) = i
+{-# INLINE bitInByte #-}
 
 instance Show BitInByte where
     show (BitInByte n) = "Bit" ++ show n
