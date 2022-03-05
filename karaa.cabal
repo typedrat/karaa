@@ -75,6 +75,9 @@ library
   other-extensions:    OverloadedLists
   ghc-options:         -O2 -Wall
 
+  build-tool-depends:  markdown-unlit:markdown-unlit ^>= 0.5.1
+  ghc-options:         -pgmL markdown-unlit
+
 executable karaa
   main-is:             Main.hs
   -- other-modules:
