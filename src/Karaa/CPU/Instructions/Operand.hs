@@ -41,6 +41,7 @@ zeroFlag        = Flag Zero
 subtractionFlag = Flag Subtraction
 halfCarryFlag   = Flag HalfCarry
 carryFlag       = Flag Carry
+
 --
 
 instance NFData (Operand mut a) where

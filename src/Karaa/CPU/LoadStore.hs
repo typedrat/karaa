@@ -1,5 +1,6 @@
-module Karaa.CPU.LoadStore ( loadFlag, loadByte, loadInt, loadLower, loadUpper
-                           , storeFlag, storeByte, storeLower, storeUpper
+module Karaa.CPU.LoadStore ( loadFlag, loadByte, loadInt, loadLower, loadUpper, loadAddr
+                           , storeFlag, storeByte, storeLower, storeUpper, storeAddr
+                           , postfixAddressOp
                            ) where
 
 import Control.Lens.Combinators       ( use, assign, modifying )
@@ -98,6 +99,9 @@ storeLower (WideRegister wr) = assign (wideRegister wr . lower)
 
 storeUpper :: Operand 'RW Word16 -> Word8 -> Karaa ()
 storeUpper (WideRegister wr) = assign (wideRegister wr . upper)
+
+storeAddr :: Operand 'RW Word16 -> Word16 -> Karaa ()
+storeAddr (WideRegister wr) = assign (wideRegister wr)
 
 postfixAddressOp :: Operand 'RW Word16 -> AddressMode -> Karaa ()
 postfixAddressOp (WideRegister wr) mode =
