@@ -36,7 +36,7 @@ import Karaa.CPU.Registers            ( Register(A), WideRegister(HL, PC, SP) )
 - [CPU Control Operations](#cpu-control-operations-ccf-scf-nop-halt-stop-ei-di)
     - [ ] The [`HALT` bug](#the-halt-bug) is currently unimplemented.
     - [ ] [`STOP`](#stop) is unimplemented.
-    - [x] `EI` doesn't wait an instruction to take effect.
+    - [ ] `EI` doesn't wait an instruction to take effect.
 
 # Single-Byte Instructions
 
