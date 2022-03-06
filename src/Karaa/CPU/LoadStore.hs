@@ -51,7 +51,7 @@ loadLower ImmediateWord16   = do
     readAddr =<< (wideRegister PC <<+= 1)
 
 loadUpper :: Operand mut Word16 -> Karaa Word8
-loadUpper (WideRegister wr) = use (wideRegister wr . lower)
+loadUpper (WideRegister wr) = use (wideRegister wr . upper)
 loadUpper ImmediateWord16   = do
     tick
     readAddr =<< (wideRegister PC <<+= 1)

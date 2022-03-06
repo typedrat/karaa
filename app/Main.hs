@@ -1,14 +1,19 @@
 module Main where
 
 import           Control.Lens
-import           Control.Monad              ( void )
-import           Control.Monad.IO.Class
+import           Control.Monad              ( mapM, void )
+import           Control.Monad.IO.Class     ( liftIO )
 import           Control.Monad.State.Strict ( runStateT )
+import           Control.Monad.Trans        ( lift )
 import qualified Data.ByteString            as BS
+import           Data.List                  ( intercalate )
 import           Data.Maybe                 ( fromMaybe )
-import           Data.Word                  ( Word8 )
+import           Data.Word                  ( Word8, Word16 )
+import           Text.Read                  ( readMaybe )
+import           System.Console.Repline
 
 import           Karaa.Core.Monad
+import           Karaa.CPU
 import           Karaa.CPU.Execution
 import           Karaa.CPU.Instructions.Decode
 import           Karaa.CPU.Instructions.Mnemonic
@@ -20,6 +25,7 @@ import           Karaa.Hardware.Cartridge
 import           Karaa.Hardware.Serial
 import           Karaa.Hardware.State
 import           Karaa.Hardware.WorkRAM
+import           Karaa.Util.Hex
 
 main :: IO ()
 main = do
@@ -37,20 +43,57 @@ main = do
                 emuState = EmulatorState initialCPUState hwState
             
             flip runStateT emuState . runKaraa $ do
-                firstInstruction <- loadByte (IndirectWithMode (WideRegister PC) PostIncrement)
-                cpuLoop 100 firstInstruction
+                evalRepl prompt commands monitorOptions optionPrefix Nothing (Word $ \_ -> return []) (return ()) (return Exit) 
 
-cpuLoop :: Int -> Word8 -> Karaa ()
-cpuLoop 0 _      = return () 
-cpuLoop n opcode = do
+prompt :: MultiLine -> HaskelineT Karaa String
+prompt _ = pure "γβ> "
+
+commands :: String -> HaskelineT Karaa ()
+commands cmd = case words cmd of
+    ["read", (readMaybe -> Just addr)] -> lift $ readCommand addr 1
+    ["read", (readMaybe -> Just addr)
+           , (readMaybe -> Just off)]  -> lift $ readCommand addr off
+    ["regs"] -> lift regsCommand
+    ["step"] -> lift stepCommand
+    ["run"] -> lift runCommand
+    [] -> return ()
+    _  -> liftIO $ putStrLn ("Unknown command: " ++ cmd)
+
+readCommand :: Word16 -> Int -> Karaa ()
+readCommand base off
+    | off > 8   = readCommand base       8
+               >> readCommand (base + 8) (off - 8)
+    | otherwise = liftIO . putStrLn . bytes =<< mapM readAddr (addrRange base off)
+    where bytes = intercalate " " . fmap showHex
+
+regsCommand :: Karaa ()
+regsCommand = do
+    regs <- use registerFile
+    let regs' = regs & wideRegister PC -~ 1
+    liftIO $ print regs'
+
+stepCommand :: Karaa () 
+stepCommand = do
+    opcode <- use nextOpcode
     let instruction = decodeInstruction opcode
         mnemonic = toMnemonic instruction
-    regs <- use registerFile
+    regsCommand
     liftIO $ do
-        putStr "Register file: "
-        print regs
         putStr "Instruction: "
-        case mnemonic of
-            Just mnemonic' -> print mnemonic'
-            Nothing        -> print instruction
-    cpuLoop (n - 1) =<< execute instruction
+        maybe (putStrLn "invalid instruction") print mnemonic
+    assign nextOpcode =<< execute instruction
+
+runCommand :: Karaa ()
+runCommand = stepCommand >> runCommand
+
+addrRange :: Word16 -> Int -> [Word16]
+addrRange base 0   = []
+addrRange base off = [base, base + direction .. end]
+    where direction = fromIntegral (signum off)
+          end = fromIntegral (fromIntegral base + off - 1)
+
+monitorOptions :: Options (HaskelineT Karaa)
+monitorOptions = []
+
+optionPrefix :: Maybe Char
+optionPrefix = Just ':'

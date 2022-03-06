@@ -6,3 +6,4 @@ cabal.project.local
 bootroms/*
 roms/*
 !.keep
+.history

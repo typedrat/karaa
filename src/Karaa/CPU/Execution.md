@@ -468,9 +468,10 @@ fetchNext m = m >> loadByte (IndirectWithMode (WideRegister PC) PostIncrement)
 
 ```haskell
 arithWithCarry :: (Word -> Word -> Word) -> Word8 -> Word8 -> Bool -> (Word8, Bool, Bool, Bool)
-arithWithCarry op a b c = (fromIntegral out, zero, halfCarry, carry)
+arithWithCarry op a b c = (out', zero, halfCarry, carry)
     where
-        zero      = out == 0
+        out'      = fromIntegral out
+        zero      = out' == 0
         halfCarry = halfCarryOut > halfCarryMask
         carry     = out > 0xFF
 

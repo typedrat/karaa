@@ -2,6 +2,7 @@ module Karaa.Core.Monad ( Karaa(..), readAddr, writeAddr, tick, EmulatorState(..
 
 import Control.Applicative           ( Alternative(..) )
 import Control.Lens.Lens             ( lens )
+import Control.Monad.Catch           ( MonadThrow, MonadCatch, MonadMask )
 import Control.Monad.IO.Class        ( MonadIO )
 import Control.Monad.Trans.Maybe     ( runMaybeT )
 import Control.Monad.State.Strict    ( MonadState(..), StateT(..) )
@@ -65,7 +66,11 @@ instance HasHardwareState EmulatorState where
 -- | The emulator runs in a specific monad transformer stack for performance reasons. It is wrapped in a @newtype@ to
 --   make it easy to attach custom typeclass instances and @SPECIALIZE@-ations to it. 
 newtype Karaa a = Karaa { runKaraa :: StateT EmulatorState IO a }
-                deriving newtype (Functor, Applicative, Monad, MonadState EmulatorState, MonadIO)
+                deriving newtype ( Functor, Applicative, Monad
+                                 , MonadState EmulatorState
+                                 , MonadIO
+                                 , MonadThrow, MonadCatch, MonadMask
+                                 )
                 deriving MonadRAM via WithMonadIO Karaa
                 deriving MonadInterrupt via WithIRQState Karaa
 
