@@ -138,13 +138,12 @@ bankedRAM ram size
 
 wrapBanked :: (a -> Int -> r) -> Banked a -> Int -> Word16 -> r
 wrapBanked f (Banked mem size count) bank addr 
-    | bank < 0     = error "Bank cannot be negative!"
-    | bank > count = error $ concat ["Cannot access bank ", show bank, "! Valid banks are 0..", show count]
-    | addr' > size = error $ concat ["Address ", showHex addr', " is larger than bank size ", showHex size]
+    | addr' > size = error $ concat ["Address ", showHex addr, " is larger than bank size ", showHex size]
     | otherwise    = f mem rawAddr
     where
+        bank' = bank `mod` count
         addr' = fromIntegral addr
-        rawAddr = bank * size + addr'
+        rawAddr = bank' * size + addr'
 
 -- | @readBankedROM rom bank addr@ reads the value at address @addr@ in bank @bank@.
 readBankedROM :: Banked ROM -> Int -> Word16 -> Word8

@@ -1,10 +1,9 @@
 module Karaa.CPU.LoadStore ( loadFlag, loadByte, loadInt, loadLower, loadUpper, loadAddr
                            , storeFlag, storeByte, storeLower, storeUpper, storeAddr
-                           , postfixAddressOp
                            ) where
 
-import Control.Lens.Combinators       ( use, assign, modifying )
-import Control.Lens.Operators         ( (<<+=) )
+import Control.Lens.Combinators       ( use, assign )
+import Control.Lens.Operators
 import Data.Bits                      ( Bits(..) )
 import Data.Int                       ( Int8 )
 import Data.Word                      ( Word8, Word16 )
@@ -31,11 +30,8 @@ loadByte (Indirect op) = do
     readAddr addr
 
 loadByte (IndirectWithMode op mode) = do
-    addr <- loadAddr op
     tick
-    val <- readAddr addr
-    postfixAddressOp op mode
-    return val
+    readAddr =<< addressWithOp op mode
 
 loadByte (HimemIndirect op) = do
     lowerAddr <- loadByte op
@@ -67,7 +63,7 @@ loadAddr ImmediateWord16   = do
     lowerByte <- readAddr =<< (wideRegister PC <<+= 1)
     tick
     upperByte <- readAddr =<< (wideRegister PC <<+= 1)
-    return $ fromIntegral (upperByte `shiftL` 8) .|. fromIntegral lowerByte
+    return $ (fromIntegral upperByte `shiftL` 8) .|. fromIntegral lowerByte
 
 --
 
@@ -84,9 +80,8 @@ storeByte (Indirect op) val = do
 
 storeByte (IndirectWithMode op mode) val = do
     tick
-    addr <- loadAddr op
+    addr <- addressWithOp op mode
     writeAddr addr val
-    postfixAddressOp op mode
 
 storeByte (HimemIndirect op) val = do
     tick
@@ -103,10 +98,8 @@ storeUpper (WideRegister wr) = assign (wideRegister wr . upper)
 storeAddr :: Operand 'RW Word16 -> Word16 -> Karaa ()
 storeAddr (WideRegister wr) = assign (wideRegister wr)
 
-postfixAddressOp :: Operand 'RW Word16 -> AddressMode -> Karaa ()
-postfixAddressOp (WideRegister wr) mode =
-    modifying (wideRegister wr) (addressModeToOp mode)
-
-addressModeToOp :: AddressMode -> Word16 -> Word16
-addressModeToOp PostIncrement = (+ 1)
-addressModeToOp PostDecrement = subtract 1
+addressWithOp :: Operand 'RW Word16 -> AddressMode -> Karaa Word16
+addressWithOp (WideRegister wr) PreIncrement  = wideRegister wr  <+= 1
+addressWithOp (WideRegister wr) PreDecrement  = wideRegister wr  <-= 1
+addressWithOp (WideRegister wr) PostIncrement = wideRegister wr <<+= 1
+addressWithOp (WideRegister wr) PostDecrement = wideRegister wr <<-= 1

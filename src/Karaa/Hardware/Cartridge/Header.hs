@@ -2,6 +2,9 @@
 module Karaa.Hardware.Cartridge.Header ( module Karaa.Hardware.Cartridge.Header.Types
                                        , parseHeader
                                        , parseHeader'
+                                       -- * Raw parser
+                                       , Parser
+                                       , cartHeader
                                        ) where
 
 import           Data.Bits                   ( shiftL )

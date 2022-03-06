@@ -6,6 +6,8 @@ mappers for convenience.
 -}
 module Karaa.Hardware.Cartridge.Mappers 
     ( module ROMOnly
+    , module MBC1
     ) where
 
 import Karaa.Hardware.Cartridge.Mappers.ROMOnly as ROMOnly
+import Karaa.Hardware.Cartridge.Mappers.MBC1    as MBC1

@@ -37,6 +37,7 @@ library
                      , Karaa.Hardware.Cartridge.Header
                      , Karaa.Hardware.Cartridge.Header.Types
                      , Karaa.Hardware.Cartridge.Mappers
+                     , Karaa.Hardware.Cartridge.Mappers.MBC1
                      , Karaa.Hardware.Cartridge.Mappers.ROMOnly
                      , Karaa.Hardware.Serial
                      , Karaa.Hardware.State
@@ -84,6 +85,8 @@ executable karaa
   -- other-modules:
   -- other-extensions:
   build-depends:       base >= 4.14 && < 5
+                     , mtl
+                     , bytestring
                      , lens
                      , karaa
   hs-source-dirs:      app

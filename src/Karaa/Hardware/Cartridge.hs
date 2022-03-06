@@ -6,17 +6,19 @@ module Karaa.Hardware.Cartridge ( Cartridge(), HasCartridge(..)
                                 , readCartridge, writeCartridge, tickCartridge
                                 ) where
 
-import           Control.Lens.Combinators         ( use )
+import           Control.Lens.Combinators         ( use, assign )
 import           Control.Lens.Lens                ( Lens' )
 import           Control.Monad.Trans.Maybe        ( MaybeT(..) )
 import           Control.Monad.State.Class        ( MonadState )
 import qualified Data.ByteString                  as BS
 import           Data.Word                        ( Word8, Word16 )
 
+import           Karaa.Core.Types.Memory
 import           Karaa.Hardware.Cartridge.Header
 import           Karaa.Hardware.Cartridge.Mappers
 
 data Cartridge = ROMOnlyCartridge ROMOnlyCartridge
+               | MBC1Cartridge    MBC1Cartridge
                deriving (Show)
 
 class HasCartridge s where
@@ -27,18 +29,22 @@ instance HasCartridge Cartridge where
 
 --
 
-readCartridge :: (MonadState s m, HasCartridge s) => Word16 -> MaybeT m Word8
+readCartridge :: (MonadState s m, HasCartridge s, MonadRAM m) => Word16 -> MaybeT m Word8
 readCartridge addr = use cartridge >>= \case
-        ROMOnlyCartridge roc -> hoistMaybe $ readROMOnlyCartridge roc addr
+    ROMOnlyCartridge roc  -> hoistMaybe $ readROMOnlyCartridge roc addr
+    MBC1Cartridge    mbc1 -> readMBC1Cartridge mbc1 addr 
 {-# INLINE readCartridge #-}
 
-writeCartridge :: (MonadState s m, HasCartridge s) => Word16 -> Word8 -> m ()
-writeCartridge _ _ = use cartridge >>= \case
-    _ -> return ()
+writeCartridge :: (MonadState s m, HasCartridge s, MonadRAM m) => Word16 -> Word8 -> m ()
+writeCartridge addr byte = use cartridge >>= \case
+    ROMOnlyCartridge _    -> return ()
+    MBC1Cartridge    mbc1 -> assign cartridge . MBC1Cartridge =<< writeMBC1Cartridge mbc1 addr byte
 {-# INLINE writeCartridge #-}
 
 tickCartridge :: (MonadState s m, HasCartridge s) => m ()
-tickCartridge = return ()
+tickCartridge = use cartridge >>= \case
+    ROMOnlyCartridge _ -> return ()
+    MBC1Cartridge    _ -> return ()
 {-# INLINE tickCartridge #-}
 
 --
@@ -55,7 +61,8 @@ loadCartridgeFromByteString rom mRAM = do
     header <- maybeToEither InvalidHeader $ parseHeader rom
     
     case mapperInfo header of
-        ROMOnly -> maybeToEither UnsupportedMapperConfiguration $ ROMOnlyCartridge <$> makeROMOnlyCartridge header rom
+        ROMOnly  -> maybeToEither UnsupportedMapperConfiguration $ ROMOnlyCartridge <$> makeROMOnlyCartridge header rom
+        MBC1 _ _ -> maybeToEither UnsupportedMapperConfiguration $ MBC1Cartridge    <$> makeMBC1Cartridge header rom 
         _       -> Left UnsupportedMapper
 
 hoistMaybe :: (Applicative m) => Maybe a -> MaybeT m a

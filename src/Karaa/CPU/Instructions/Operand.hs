@@ -13,7 +13,8 @@ import Prettyprinter       ( Pretty(..), parens )
 import Karaa.CPU.Registers ( WideRegister, Register, Flag(..) )
 
 -- | The special addressing modes of the GameBoy's CPU.
-data AddressMode = PostIncrement | PostDecrement
+data AddressMode = PreIncrement  | PreDecrement 
+                 | PostIncrement | PostDecrement
                  deriving (Show, Eq)
 
 -- | A type-level marker for the mutability of an operand.
@@ -56,6 +57,8 @@ instance Pretty (Operand mut a) where
     pretty ImmediateInt8                         = "i8"
     pretty ImmediateWord16                       = "u16"
     pretty (Indirect addr)                       = parens (pretty addr)
+    pretty (IndirectWithMode addr PreIncrement)  = parens ("+" <> pretty addr)
+    pretty (IndirectWithMode addr PreDecrement)  = parens ("-" <> pretty addr)
     pretty (IndirectWithMode addr PostIncrement) = parens (pretty addr <> "+")
     pretty (IndirectWithMode addr PostDecrement) = parens (pretty addr <> "-")
     pretty (HimemIndirect addr)                  = parens ("FF00+" <> pretty addr)

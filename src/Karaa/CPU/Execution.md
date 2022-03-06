@@ -6,7 +6,7 @@ The documentation in this file is extensive but does not map cleanly to anything
 can be attached to, so it is written as Markdown-based Literate Haskell, which can be read in rendered
 form [in the GitHub repository](https://github.com/typedrat/karaa/blob/master/src/Karaa/CPU/Execution.md).
 -}
-module Karaa.CPU.Execution ( execute ) where
+module Karaa.CPU.Execution ( execute, pushPC ) where
 
 import Control.Monad                  ( when )
 import Data.Bits                      ( Bits(..) )
@@ -26,7 +26,6 @@ import Karaa.CPU.Instructions.Types   ( Instruction(..), CBInstruction(..), Uses
 import Karaa.CPU.Instructions.Decode  ( decodeCBInstruction )
 import Karaa.CPU.LoadStore            ( loadFlag, loadByte, loadInt, loadLower, loadUpper, loadAddr
                                       , storeFlag, storeByte, storeLower, storeUpper, storeAddr
-                                      , postfixAddressOp
                                       )
 import Karaa.CPU.Registers            ( Register(A), WideRegister(HL, PC, SP) )
 ```
@@ -522,13 +521,14 @@ push :: Operand 'RW Word16 -> Karaa ()
 push src = do
     tick
 
-    postfixAddressOp (WideRegister SP) PostDecrement
     high <- loadUpper src
-    storeByte (Indirect (WideRegister SP)) high
-    
-    postfixAddressOp (WideRegister SP) PostDecrement
+    storeByte (IndirectWithMode (WideRegister SP) PreDecrement) high
+
     low  <- loadLower src
-    storeByte (Indirect (WideRegister SP)) low
+    storeByte (IndirectWithMode (WideRegister SP) PreDecrement) low
+
+pushPC :: Karaa ()
+pushPC = push (WideRegister PC)
 
 pop :: Operand 'RW Word16 -> Karaa ()
 pop dst = do
