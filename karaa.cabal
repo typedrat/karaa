@@ -23,6 +23,7 @@ library
                      , Karaa.Core.Types.Memory
                      , Karaa.Core.Types.WithMonadIO
                      , Karaa.Core.Monad
+                     , Karaa.CPU.Execution
                      , Karaa.CPU.Instructions.Decode
                      , Karaa.CPU.Instructions.Mnemonic
                      , Karaa.CPU.Instructions.Operand
