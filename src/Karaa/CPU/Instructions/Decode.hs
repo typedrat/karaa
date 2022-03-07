@@ -114,8 +114,8 @@ makeInstruction _ _ _ = InvalidInstruction
 makeCBInstruction :: Int -> Int -> Int -> CBInstruction
 makeCBInstruction 0 y z = rot ! y $ r ! z
 makeCBInstruction 1 y z = TestBit  (bit ! y) (r ! z)
-makeCBInstruction 3 y z = ResetBit (bit ! y) (r ! z)
-makeCBInstruction 2 y z = SetBit   (bit ! y) (r ! z)
+makeCBInstruction 2 y z = ResetBit (bit ! y) (r ! z)
+makeCBInstruction 3 y z = SetBit   (bit ! y) (r ! z)
 
 -- These names are awful, blame the original documentation!
 -- https://gb-archive.github.io/salvage/decoding_gbz80_opcodes/Decoding%20Gamboy%20Z80%20Opcodes.html
