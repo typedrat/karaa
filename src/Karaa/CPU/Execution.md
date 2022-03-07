@@ -167,9 +167,10 @@ execute (AddWord16 dst src) = fetchNext $ do
     aUpper <- loadUpper dst
     bUpper <- loadUpper src
     let (outUpper, _, halfCarry, carry) = arithWithCarry (+) aUpper bUpper lowerCarry
-    storeFlag  halfCarryFlag halfCarry
-    storeFlag  carryFlag     carry
-    storeUpper dst           outUpper
+    storeFlag  subtractionFlag False
+    storeFlag  halfCarryFlag   halfCarry
+    storeFlag  carryFlag       carry
+    storeUpper dst             outUpper
 
 execute (IncrementWord16 dst) = fetchNext $ do
     aLower <- loadLower dst
@@ -443,9 +444,9 @@ shiftRight :: Operand 'RW Word8 -> Bool -> Karaa ()
 shiftRight dst isLogical = do
     byte <- loadByte dst
     let carry = testBit byte 0
-        out = if isLogical
-            then clearBit (byte `shiftR` 1) 7
-            else byte `shiftR` 1
+        out = if isLogical || not (testBit byte 7)
+            then byte `shiftR` 1
+            else setBit (byte `shiftR` 1) 7
 
     storeFlag zeroFlag        (out == 0)
     storeFlag subtractionFlag False
@@ -485,7 +486,7 @@ arithWithCarry op a b c = (out', zero, halfCarry, carry)
         out = a' `op` b'
 
         halfCarryMask = 0x0F
-        halfCarryOut  = (a' .&. halfCarryMask) `op` (b' .&. halfCarryMask)
+        halfCarryOut  = (a' .&. halfCarryMask) `op` (fromIntegral b .&. halfCarryMask) `op` c'
 
 alu8Operation :: (Word -> Word -> Word) -> Karaa Word8 -> Karaa Word8 -> Karaa Bool -> Karaa Word8
 alu8Operation op dst src useCarry = do
