@@ -29,7 +29,7 @@ import           Karaa.Util.Hex
 
 main :: IO ()
 main = do
-    cartBS <- BS.readFile "./testroms/blargg/cpu_instrs/cpu_instrs.gb"
+    cartBS <- BS.readFile "./testroms/blargg/cpu_instrs/individual/09-op r,r.gb"
 
     forceDecoderTables
     case loadCartridgeFromByteString cartBS Nothing of
@@ -72,15 +72,24 @@ regsCommand = do
     let regs' = regs & wideRegister PC -~ 1
     liftIO $ print regs'
 
+logStep :: FilePath -> Karaa ()
+logStep path = do
+    regs <- use registerFile
+    let regs' = regs & wideRegister PC -~ 1
+        regDumps = (\r -> show r ++ ": " ++ showHex (regs' ^. register r)) <$> [A, F, B, C, D, E, H, L]
+        wideRegDumps = (\wr -> show wr ++ ": " ++ showHex (regs' ^. wideRegister wr)) <$>  [SP, PC]
+        pc = regs' ^. wideRegister PC
+    bytes <- mapM (fmap showHex . readAddr) [pc .. pc + 3]
+    let bytesDump = " (" ++ intercalate " " bytes ++ ")"
+
+    liftIO $ appendFile path (intercalate " " (regDumps ++ wideRegDumps) ++ bytesDump ++ "\n")
+
 stepCommand :: Karaa () 
 stepCommand = do
     opcode <- use nextOpcode
     let instruction = decodeInstruction opcode
         mnemonic = toMnemonic instruction
-    regsCommand
-    liftIO $ do
-        putStr "Instruction: "
-        maybe (putStrLn "invalid instruction") print mnemonic
+    logStep "09-op r,r.txt"
     assign nextOpcode =<< execute instruction
 
 runCommand :: Karaa ()

@@ -81,7 +81,7 @@ execute (SubtractWord8 dst src usesCarry) = fetchNext $ do
 
 execute (AndWord8 dst src) = fetchNext $
                              bitwiseOperation (.&.) dst (loadByte src)
-                          >> storeFlag subtractionFlag True
+                          >> storeFlag halfCarryFlag True
 execute (XORWord8 dst src) = fetchNext $
                              bitwiseOperation xor   dst (loadByte src)
 execute (OrWord8 dst src)  = fetchNext $
@@ -282,8 +282,12 @@ execute (SaveStackPointer dst) = fetchNext $ do
 We'll talk about bitwise rotation operations [later](#rotations-and-shifts-rlc-rl-rrc-rr-sla-sra-srl-swap), when they show up again in the `CB xx` family of instructions.
 
 ```haskell
-execute (RotateRegALeft usesCarry)  = fetchNext $ rotateLeft  (Register A) usesCarry
-execute (RotateRegARight usesCarry) = fetchNext $ rotateRight (Register A) usesCarry
+execute (RotateRegALeft usesCarry)  = fetchNext $ 
+                                      rotateLeft  (Register A) usesCarry
+                                   >> storeFlag zeroFlag False
+execute (RotateRegARight usesCarry) = fetchNext $
+                                      rotateRight (Register A) usesCarry
+                                   >> storeFlag zeroFlag False
 ```
 
 ## CPU Control Operations (`CCF`, `SCF`, `NOP`, `HALT`, `STOP`, `EI`, `DI`)
@@ -396,8 +400,8 @@ rotateLeft dst usesCarry = do
             else 0b0000_0000
         carry = testBit byte 7
         out = case usesCarry of
-          WithCarry    -> byte `shiftL` 1 .|. oldCarry'
-          WithoutCarry -> byte `rotateL` 1
+            WithCarry    -> byte `shiftL` 1 .|. oldCarry'
+            WithoutCarry -> byte `rotateL` 1
     
     storeFlag zeroFlag        (out == 0)
     storeFlag subtractionFlag False
@@ -414,8 +418,8 @@ rotateRight dst usesCarry = do
             else 0b0000_0000
         carry = testBit byte 0
         out = case usesCarry of
-          WithCarry    -> byte `shiftR` 1 .|. oldCarry'
-          WithoutCarry -> byte `rotateR` 1
+            WithCarry    -> byte `shiftR` 1 .|. oldCarry'
+            WithoutCarry -> byte `rotateR` 1
     
     storeFlag zeroFlag        (out == 0)
     storeFlag subtractionFlag False

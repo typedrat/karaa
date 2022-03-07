@@ -24,7 +24,7 @@ import Karaa.Util.ByteLenses ( lower, upper )
 import Karaa.Util.Hex        ( showHex )
 
 -- | The GameBoy's CPU's 8-bit registers.
-data Register = A | B | C | D | E | H | L
+data Register = A | F | B | C | D | E | H | L
               deriving (Show, Eq)
 
 -- | The GameBoy CPU's 16-bit registers.
@@ -108,6 +108,7 @@ instance HasRegisterFile RegisterFile where
 
     register :: Register -> Lens' RegisterFile Word8
     register A = wideRegister AF . upper
+    register F = wideRegister AF . lower
     register B = wideRegister BC . upper
     register C = wideRegister BC . lower
     register D = wideRegister DE . upper
@@ -117,10 +118,10 @@ instance HasRegisterFile RegisterFile where
     {-# INLINE register#-}
 
     flag :: Flag -> Lens' RegisterFile Bool
-    flag Zero        = wideRegister AF . lower . bitAt 7
-    flag Subtraction = wideRegister AF . lower . bitAt 6
-    flag HalfCarry   = wideRegister AF . lower . bitAt 5
-    flag Carry       = wideRegister AF . lower . bitAt 4
+    flag Zero        = register F . bitAt 7
+    flag Subtraction = register F . bitAt 6
+    flag HalfCarry   = register F . bitAt 5
+    flag Carry       = register F . bitAt 4
     {-# INLINE flag #-}
 
 instance Show RegisterFile where

@@ -75,7 +75,7 @@ newtype Karaa a = Karaa { runKaraa :: StateT EmulatorState IO a }
                 deriving MonadInterrupt via WithIRQState Karaa
 
 readAddr :: Word16 -> Karaa Word8
-readAddr addr = fmap (fromMaybe 0xFF) . runMaybeT $
+readAddr addr = fmap (fromMaybe 0x90) . runMaybeT $
     readHardware addr <|> readInterruptRegisters addr
 
 writeAddr :: Word16 -> Word8 -> Karaa ()

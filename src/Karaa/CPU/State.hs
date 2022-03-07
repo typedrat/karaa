@@ -26,7 +26,7 @@ instance HasIRQState CPUState where
 --   TODO: make that be true once boot ROMs work.
 initialCPUState :: CPUState
 initialCPUState = CPUState regs initialIRQState 00
-    where regs = makeRegisterFile 0x0000 0x0000 0x0000 0x0000 0x0101 0xFFFE
+    where regs = makeRegisterFile 0x01B0 0x0013 0x00D8 0x014D 0x0101 0xFFFE
 
 --
 
