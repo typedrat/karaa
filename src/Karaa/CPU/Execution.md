@@ -8,7 +8,7 @@ form [in the GitHub repository](https://github.com/typedrat/karaa/blob/master/sr
 -}
 module Karaa.CPU.Execution ( execute, pushPC ) where
 
-import Control.Monad                  ( when )
+import Control.Monad                  ( when, unless )
 import Data.Bits                      ( Bits(..) )
 import Data.Int                       ( Int8 )
 import Data.Word                      ( Word8, Word16 )
@@ -133,8 +133,10 @@ execute (DecimalAdjustWord8 dst) = fetchNext $ do
     halfCarry   <- loadFlag halfCarryFlag 
     carry       <- loadFlag carryFlag 
 
-    let fixLowerNeeded = (a .&. 0x0F > 0x09) || halfCarry
-        fixUpperNeeded = (a          > 0x90) || carry
+    let fixLowerNeeded | subtraction = halfCarry 
+                       | otherwise   = (a .&. 0x0F > 0x09) || halfCarry
+        fixUpperNeeded | subtraction = carry
+                       | otherwise   = (a > 0x99) || carry
 
         fixLower | fixLowerNeeded = 0x06
                  | otherwise      = 0
@@ -145,10 +147,11 @@ execute (DecimalAdjustWord8 dst) = fetchNext $ do
             then a - fixLower - fixUpper
             else a + fixLower + fixUpper
 
-    storeFlag zeroFlag        (out == 0)
-    storeFlag halfCarryFlag   False
-    storeFlag carryFlag       (out > 0x99)
-    storeByte dst             out
+    storeFlag     zeroFlag      (out == 0)
+    storeFlag     halfCarryFlag False
+    unless subtraction $
+        storeFlag carryFlag fixUpperNeeded
+    storeByte     dst           out
 ```
 
 ## 16-Bit Arithmetic Operations (`ADD`, `INC`, `DEC`)
