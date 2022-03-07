@@ -236,8 +236,10 @@ execute (AddSigned dst src) = fetchNext $ do
     bLower <- loadInt src
     let (outLower, _, halfCarry, carry) = arithWithCarry (+) aLower (fromIntegral bLower) False
 
-    storeFlag halfCarryFlag halfCarry
-    storeFlag carryFlag     carry
+    storeFlag zeroFlag        False
+    storeFlag subtractionFlag False
+    storeFlag halfCarryFlag   halfCarry
+    storeFlag carryFlag       carry
     tick
 
     aUpper <- loadUpper dst
@@ -255,8 +257,10 @@ execute (LoadSigned dst src off) = fetchNext $ do
     let (outLower, _, halfCarry, carry) = arithWithCarry (+) aLower (fromIntegral bLower) False
     storeLower dst outLower
 
-    storeFlag halfCarryFlag halfCarry
-    storeFlag carryFlag     carry
+    storeFlag zeroFlag        False
+    storeFlag subtractionFlag False
+    storeFlag halfCarryFlag   halfCarry
+    storeFlag carryFlag       carry
     tick
 
     aUpper <- loadUpper src
