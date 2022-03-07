@@ -371,7 +371,7 @@ Another in the category of "trivial operations that you just can't live without"
 executeCB (TestBit bib op) = do
     a <- loadByte op
 
-    storeFlag zeroFlag        (testBit a $ bitInByte bib)
+    storeFlag zeroFlag        (not . testBit a $ bitInByte bib)
     storeFlag subtractionFlag False
     storeFlag halfCarryFlag   True
 
