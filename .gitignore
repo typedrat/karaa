@@ -7,3 +7,4 @@ bootroms/*
 roms/*
 !.keep
 .history
+0*-*.txt

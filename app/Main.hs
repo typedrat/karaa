@@ -22,6 +22,7 @@ import           Karaa.CPU.LoadStore
 import           Karaa.CPU.Registers
 import           Karaa.CPU.State
 import           Karaa.Hardware.Cartridge
+import           Karaa.Hardware.HighRAM
 import           Karaa.Hardware.Serial
 import           Karaa.Hardware.State
 import           Karaa.Hardware.WorkRAM
@@ -37,9 +38,10 @@ main = do
         Left UnsupportedMapper              -> putStrLn "We do not (yet!) support emulating cartridges using this mapper."
         Left UnsupportedMapperConfiguration -> putStrLn "The mapper is supported, but the configuration isn't."
         Right cart -> void $ do
+            hram <- makeHighRAM
             wram <- makeWorkRAM
             let serialPort = makeSerialPort putCharSerialCallback
-                hwState = HardwareState cart serialPort wram
+                hwState = HardwareState cart hram serialPort wram
                 emuState = EmulatorState initialCPUState hwState
             
             flip runStateT emuState . runKaraa $ do

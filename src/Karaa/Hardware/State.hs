@@ -12,18 +12,20 @@ import Data.Word                 ( Word8, Word16 )
 import Karaa.CPU.Interrupts      ( MonadInterrupt )
 import Karaa.Core.Types.Memory   ( MonadRAM )
 import Karaa.Hardware.Cartridge
+import Karaa.Hardware.HighRAM
 import Karaa.Hardware.Serial
 import Karaa.Hardware.WorkRAM
 
-data HardwareState = HardwareState { hwCartridge :: Cartridge, hwSerialPort :: SerialPort, hwWorkRAM :: WorkRAM }
+data HardwareState = HardwareState { hwCartridge :: Cartridge, hwHighRAM :: HighRAM, hwSerialPort :: SerialPort, hwWorkRAM :: WorkRAM }
                    deriving (Show)
 
-class (HasCartridge s, HasSerialPort s, HasWorkRAM s) => HasHardwareState s where
+class (HasCartridge s, HasHighRAM s, HasSerialPort s, HasWorkRAM s) => HasHardwareState s where
     hardwareState :: Lens' s HardwareState
 
 readHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> MaybeT m Word8 
 readHardware addr = readWorkRAM addr
                 <|> readCartridge addr
+                <|> readHighRAM addr
                 <|> readSerialPortRegisters addr
 {-# INLINE readHardware #-}
 
@@ -31,6 +33,7 @@ writeHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> W
 writeHardware addr byte = do
     writeWorkRAM addr byte
     writeCartridge addr byte
+    writeHighRAM addr byte
     writeSerialPortRegisters addr byte
 {-# INLINE writeHardware #-}
 
@@ -49,6 +52,10 @@ instance HasHardwareState HardwareState where
 instance HasCartridge HardwareState where
     cartridge = lens (\HardwareState { hwCartridge } -> hwCartridge) (\st hwCartridge -> st { hwCartridge })
     {-# INLINE cartridge #-}
+
+instance HasHighRAM HardwareState where
+    highRAM = lens (\HardwareState { hwHighRAM } -> hwHighRAM) (\st hwHighRAM -> st { hwHighRAM })
+    {-# INLINE highRAM #-}
 
 instance HasSerialPort HardwareState where
     serialPort = lens (\HardwareState { hwSerialPort } -> hwSerialPort) (\st hwSerialPort -> st { hwSerialPort })

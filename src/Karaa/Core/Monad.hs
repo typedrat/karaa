@@ -19,6 +19,7 @@ import Karaa.CPU.Registers           ( HasRegisterFile(..) )
 import Karaa.CPU.State               ( CPUState, HasCPUState(..) )
 
 import Karaa.Hardware.Cartridge
+import Karaa.Hardware.HighRAM
 import Karaa.Hardware.State
 import Karaa.Hardware.Serial
 import Karaa.Hardware.WorkRAM
@@ -48,6 +49,10 @@ instance HasCPUState EmulatorState where
 instance HasCartridge EmulatorState where
     cartridge = hardwareState . cartridge
     {-# INLINE cartridge #-}
+
+instance HasHighRAM EmulatorState where
+    highRAM = hardwareState . highRAM
+    {-# INLINE highRAM #-}
 
 instance HasSerialPort EmulatorState where
     serialPort = hardwareState . serialPort

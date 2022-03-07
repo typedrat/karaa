@@ -65,6 +65,7 @@ library
                      , Karaa.Hardware.Cartridge.Mappers
                      , Karaa.Hardware.Cartridge.Mappers.MBC1
                      , Karaa.Hardware.Cartridge.Mappers.ROMOnly
+                     , Karaa.Hardware.HighRAM
                      , Karaa.Hardware.Serial
                      , Karaa.Hardware.State
                      , Karaa.Hardware.WorkRAM
