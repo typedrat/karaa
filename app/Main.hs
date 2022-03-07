@@ -30,7 +30,7 @@ import           Karaa.Util.Hex
 
 main :: IO ()
 main = do
-    cartBS <- BS.readFile "./testroms/blargg/cpu_instrs/individual/03-op sp,hl.gb"
+    cartBS <- BS.readFile "./testroms/blargg/cpu_instrs/cpu_instrs.gb"
 
     forceDecoderTables
     case loadCartridgeFromByteString cartBS Nothing of
@@ -91,7 +91,7 @@ stepCommand = do
     opcode <- use nextOpcode
     let instruction = decodeInstruction opcode
         mnemonic = toMnemonic instruction
-    logStep "03-op sp,hl.txt"
+    -- logStep "cpu_instrs.txt"
     assign nextOpcode =<< execute instruction
 
 runCommand :: Karaa ()

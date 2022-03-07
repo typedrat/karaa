@@ -18,4 +18,6 @@ A Haskell GameBoy emulator. It intends to be as accurate as possible to the orig
 
 ## Status
 
-Currently, we do not have any working emulation, and therefore cannot pass any tests.
+Currently, we pass all of Blargg's `cpu_instrs` test ROM, except for interrupts because those are not yet implemented.
+
+Further testing is awaiting implementation of the PPU and timer functionality.
