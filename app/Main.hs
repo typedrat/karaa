@@ -2,6 +2,7 @@ module Main where
 
 import           Control.Lens
 import           Control.Monad              ( mapM, void )
+import           Control.Monad.Catch        ( handleIf )
 import           Control.Monad.IO.Class     ( liftIO )
 import           Control.Monad.State.Strict ( runStateT )
 import           Control.Monad.Trans        ( lift )
@@ -11,6 +12,11 @@ import           Data.Maybe                 ( fromMaybe )
 import           Data.Word                  ( Word8, Word16 )
 import           Text.Read                  ( readMaybe )
 import           System.Console.Repline
+import           System.Directory           ( removeFile )
+import           System.Environment         ( getArgs, getProgName )
+import           System.Exit                ( exitFailure )
+import           System.FilePath            ( takeFileName, (-<.>) )
+import           System.IO.Error            ( isDoesNotExistError )
 
 import           Karaa.Core.Monad
 import           Karaa.CPU
@@ -29,10 +35,21 @@ import           Karaa.Hardware.WorkRAM
 import           Karaa.Util.Hex
 
 main :: IO ()
-main = do
-    cartBS <- BS.readFile "./testroms/blargg/cpu_instrs/cpu_instrs.gb"
+main = forceDecoderTables
+    >> getArgs >>= \case
+        [path] -> runRepl path
+        _ -> do
+            name <- getProgName
+            putStrLn $ "USAGE: " ++ name ++ " ROM_PATH"
+            exitFailure
 
-    forceDecoderTables
+runRepl :: FilePath -> IO ()
+runRepl path = do
+    cartBS <- BS.readFile path
+
+    let logPath = takeFileName path -<.> "txt"
+    handleIf isDoesNotExistError (\_ -> return ()) (removeFile logPath)
+
     case loadCartridgeFromByteString cartBS Nothing of
         Left InvalidHeader                  -> putStrLn "The cartridge header is invalid."
         Left UnsupportedMapper              -> putStrLn "We do not (yet!) support emulating cartridges using this mapper."
@@ -45,19 +62,21 @@ main = do
                 emuState = EmulatorState initialCPUState hwState
             
             flip runStateT emuState . runKaraa $ do
-                evalRepl prompt commands monitorOptions optionPrefix Nothing (Word $ \_ -> return []) (return ()) (return Exit) 
+                evalRepl prompt (commands logPath) monitorOptions optionPrefix Nothing (Word $ \_ -> return []) (return ()) (return Exit) 
 
 prompt :: MultiLine -> HaskelineT Karaa String
 prompt _ = pure "γβ> "
 
-commands :: String -> HaskelineT Karaa ()
-commands cmd = case words cmd of
+commands :: FilePath -> String -> HaskelineT Karaa ()
+commands logPath cmd = case words cmd of
     ["read", (readMaybe -> Just addr)] -> lift $ readCommand addr 1
     ["read", (readMaybe -> Just addr)
            , (readMaybe -> Just off)]  -> lift $ readCommand addr off
     ["regs"] -> lift regsCommand
-    ["step"] -> lift stepCommand
-    ["run"] -> lift runCommand
+    ["step"] -> lift (stepCommand Nothing)
+    ["run"]  -> lift (runCommand  Nothing)
+    ["tracestep"] -> lift (stepCommand $ Just logPath)
+    ["tracerun"]  -> lift (runCommand  $ Just logPath)
     [] -> return ()
     _  -> liftIO $ putStrLn ("Unknown command: " ++ cmd)
 
@@ -86,16 +105,17 @@ logStep path = do
 
     liftIO $ appendFile path (intercalate " " (regDumps ++ wideRegDumps) ++ bytesDump ++ "\n")
 
-stepCommand :: Karaa () 
-stepCommand = do
+stepCommand :: Maybe FilePath -> Karaa () 
+stepCommand logPath = do
     opcode <- use nextOpcode
     let instruction = decodeInstruction opcode
         mnemonic = toMnemonic instruction
-    -- logStep "cpu_instrs.txt"
+    maybe (return ()) logStep logPath
     assign nextOpcode =<< execute instruction
 
-runCommand :: Karaa ()
-runCommand = stepCommand >> runCommand
+runCommand :: Maybe FilePath -> Karaa ()
+runCommand logPath = go
+    where go = stepCommand logPath >> go
 
 addrRange :: Word16 -> Int -> [Word16]
 addrRange base 0   = []
