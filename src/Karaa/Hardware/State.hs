@@ -27,7 +27,13 @@ readHardware addr = readWorkRAM addr
                 <|> readCartridge addr
                 <|> readHighRAM addr
                 <|> readSerialPortRegisters addr
+                <|> ioMemoryFallback addr
 {-# INLINE readHardware #-}
+
+ioMemoryFallback :: (Monad m) => Word16 -> MaybeT m Word8
+ioMemoryFallback addr
+    | addr >= 0xFF00 = pure 0xFF
+    | otherwise      = empty
 
 writeHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> Word8 -> m ()
 writeHardware addr byte = do
