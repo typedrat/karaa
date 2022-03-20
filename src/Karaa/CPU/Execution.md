@@ -6,8 +6,9 @@ The documentation in this file is extensive but does not map cleanly to anything
 can be attached to, so it is written as Markdown-based Literate Haskell, which can be read in rendered
 form [in the GitHub repository](https://github.com/typedrat/karaa/blob/master/src/Karaa/CPU/Execution.md).
 -}
-module Karaa.CPU.Execution ( execute, pushPC ) where
+module Karaa.CPU.Execution ( execute, serviceInterrupt ) where
 
+import Control.Lens.Operators         ( (^.) )
 import Control.Monad                  ( when, unless )
 import Data.Bits                      ( Bits(..) )
 import Data.Int                       ( Int8 )
@@ -16,10 +17,16 @@ import GHC.Stack                      ( HasCallStack )
 
 import Karaa.Core.Monad               ( Karaa, writeAddr, tick )
 import Karaa.Core.Types.BitInByte     ( bitInByte )
-import Karaa.CPU.Interrupts.Internal  ( InterruptStatus(..), setInterruptStatus
+import Karaa.CPU.Interrupts.Internal  ( InterruptStatus(..)
+                                      , areInterruptsEnabled
+                                      , setInterruptStatus
                                       , checkForPendingInterrupt
+                                      , clearInterrupt
+                                      , Interrupt(..)
                                       )
 import Karaa.CPU.Instructions.Operand ( Operand(..), AddressMode(..), Mutability(..)
+                                      , pattern ProgramCounter, pattern StackPointer
+                                      , pattern Accumulator, pattern WideAccumulator
                                       , zeroFlag, subtractionFlag, halfCarryFlag, carryFlag
                                       )
 import Karaa.CPU.Instructions.Types   ( Instruction(..), CBInstruction(..), UsesCarry(..) )
@@ -27,15 +34,15 @@ import Karaa.CPU.Instructions.Decode  ( decodeCBInstruction )
 import Karaa.CPU.LoadStore            ( loadFlag, loadByte, loadInt, loadLower, loadUpper, loadAddr
                                       , storeFlag, storeByte, storeLower, storeUpper, storeAddr
                                       )
-import Karaa.CPU.Registers            ( Register(A), WideRegister(HL, PC, SP) )
+import Karaa.Util.ByteLenses          ( upper, lower )
 ```
 
 # Known Inaccuracies:
 
 - [CPU Control Operations](#cpu-control-operations-ccf-scf-nop-halt-stop-ei-di)
-    - [ ] The [`HALT` bug](#the-halt-bug) is currently unimplemented.
+    - [x] The [`HALT` bug](#the-halt-bug) is currently unimplemented.
     - [ ] [`STOP`](#stop) is unimplemented.
-    - [ ] `EI` doesn't wait an instruction to take effect.
+    - [x] `EI` doesn't wait an instruction to take effect.
 
 # Single-Byte Instructions
 
@@ -57,7 +64,7 @@ The only point of potential shock is the special case for storing `HL` into the 
 ```haskell
 execute (Load8 dst src) = fetchNext $ loadByte src >>= storeByte dst
 
-execute (Load16 dst@(WideRegister PC) src@(WideRegister HL)) = fetchNext $ do
+execute (Load16 dst@ProgramCounter src@WideAccumulator) = fetchNext $ do
     loadAddr src >>= storeAddr dst
 
 execute (Load16 dst src) = fetchNext $ do
@@ -279,10 +286,10 @@ execute (SaveStackPointer dst) = fetchNext $ do
     addr <- loadAddr dst
     
     tick
-    writeAddr addr       =<< loadLower (WideRegister SP)
+    writeAddr addr       =<< loadLower StackPointer
 
     tick
-    writeAddr (addr + 1) =<< loadUpper (WideRegister SP)
+    writeAddr (addr + 1) =<< loadUpper StackPointer
 ```
 
 ## Accumulator Bitwise Rotations (`RLCA`, `RLA`, `RRCA`, `RRA`)
@@ -291,10 +298,10 @@ We'll talk about bitwise rotation operations [later](#rotations-and-shifts-rlc-r
 
 ```haskell
 execute (RotateRegALeft usesCarry)  = fetchNext $ 
-                                      rotateLeft  (Register A) usesCarry
+                                      rotateLeft  Accumulator usesCarry
                                    >> storeFlag zeroFlag False
 execute (RotateRegARight usesCarry) = fetchNext $
-                                      rotateRight (Register A) usesCarry
+                                      rotateRight Accumulator usesCarry
                                    >> storeFlag zeroFlag False
 ```
 
@@ -312,15 +319,38 @@ execute SetCarryFlag      = fetchNext $
                          >> storeFlag subtractionFlag False
                          >> storeFlag halfCarryFlag   False
 execute NoOperation       = fetchNext $ return ()
-execute EnableInterrupts  = fetchNext $ setInterruptStatus InterruptsEnabled
+execute EnableInterrupts  = fetchNext $ setInterruptStatus EIExecuted
 execute DisableInterrupts = fetchNext $ setInterruptStatus InterruptsDisabled
 ```
 
 ### The `HALT` Bug
 
+The `HALT` instruction has a well-known bug, usually described as follows:
+
+* If `IME` is set:
+    * `HALT` executes normally.
+* If `IME` is not set:
+    * If no interrupt is pending:
+        * `HALT` executes normally, but the interrupt is not serviced.
+    * If an interrupt is pending:
+        * The byte after `HALT` is read twice.
+    * If `EI` is pending _and_ an interrupt is pending:
+        * The interrupt is serviced, but the interrupt returns to the `HALT`.
+
+This is a helpful enough description for software writers, but it isn't particularly helpful for emulation unless you want to explicitly special case each of those possibilites. It is more helpful to first consider how `HALT` is (probably) implemented. A common technique for implementing similar instructions (at least in the RISC world) is to have the instruction always last one cycle but to only increment the program counter if an interrupt is pending before any ISRs are serviced. It's a little different here because variable duration instructions already exist so it can just take as long as it takes instead of being clever, but it's essentially the same idea.
+
+The actual `HALT` bug is the same in both cases: while the opcode prefetcher is correctly given `PC + 1`, the actual value in the `PC` register is not incremented. Since `PC` is pushed when jumping to an ISR, the `RET` or `RETI` instruction will return to the `HALT` instead of the next instruction.
+
 ```haskell
-execute Halt = haltLoop
+execute Halt = areInterruptsEnabled >>= \interruptsEnabled ->
+    if interruptsEnabled
+        then haltLoop
+        else haltBug
     where
+        haltBug = checkForPendingInterrupt >>= \case
+            Just _  -> loadByte (Indirect ProgramCounter)
+            Nothing -> tick >> haltLoop
+
         haltLoop = checkForPendingInterrupt >>= \case
             Just _  -> fetchNext $ return ()
             Nothing -> tick >> haltLoop
@@ -347,8 +377,8 @@ execute Return                                = fetchNext $ ret (pure True)
 execute (ConditionalReturn flag)              = fetchNext $ ret (loadFlag flag)
 execute ReturnAndEnableInterrupts             = fetchNext $ ret (pure True)
                                                          >> setInterruptStatus InterruptsEnabled
-execute (Reset addr)                          = fetchNext $ push (WideRegister PC)
-                                                         >> storeAddr (WideRegister PC) addr
+execute (Reset addr)                          = fetchNext $ push ProgramCounter
+                                                         >> storeAddr ProgramCounter addr
 ```
 
 ## Back Matter
@@ -471,7 +501,7 @@ The most common of these is `fetchNext`, which is used by all instructions other
 
 ```haskell
 fetchNext :: Karaa () -> Karaa Word8
-fetchNext m = m >> loadByte (IndirectWithMode (WideRegister PC) PostIncrement)
+fetchNext m = m >> loadByte (IndirectWithMode ProgramCounter PostIncrement)
 ```
 
 ## ALU Helpers
@@ -535,20 +565,17 @@ push src = do
     tick
 
     high <- loadUpper src
-    storeByte (IndirectWithMode (WideRegister SP) PreDecrement) high
+    storeByte (IndirectWithMode StackPointer PreDecrement) high
 
     low  <- loadLower src
-    storeByte (IndirectWithMode (WideRegister SP) PreDecrement) low
-
-pushPC :: Karaa ()
-pushPC = push (WideRegister PC)
+    storeByte (IndirectWithMode StackPointer PreDecrement) low
 
 pop :: Operand 'RW Word16 -> Karaa ()
 pop dst = do
-    low  <- loadByte (IndirectWithMode (WideRegister SP) PostIncrement)
+    low  <- loadByte (IndirectWithMode StackPointer PostIncrement)
     storeLower dst low
 
-    high <- loadByte (IndirectWithMode (WideRegister SP) PostIncrement)
+    high <- loadByte (IndirectWithMode StackPointer PostIncrement)
     storeUpper dst high
 ```
 
@@ -561,7 +588,7 @@ jump mFlag mAddr = do
     addr <- mAddr
 
     when flag $ do
-        storeAddr (WideRegister PC) addr
+        storeAddr ProgramCounter addr
         tick
 
 call :: Karaa Bool -> Karaa Word16 -> Karaa ()
@@ -570,8 +597,8 @@ call mFlag mAddr = do
     addr <- mAddr
 
     when flag $ do
-        push (WideRegister PC)
-        storeAddr (WideRegister PC) addr
+        push ProgramCounter
+        storeAddr ProgramCounter addr
         tick
 
 ret :: Karaa Bool -> Karaa ()
@@ -579,12 +606,49 @@ ret mFlag = do
     flag <- mFlag
 
     when flag $ do
-        pop (WideRegister PC)
+        pop ProgramCounter
         tick
 
 resolveRelativeJump :: Operand mut Int8 -> Karaa Word16
 resolveRelativeJump off = do
     offset   <- loadInt off
-    baseAddr <- loadAddr (WideRegister PC)
+    baseAddr <- loadAddr ProgramCounter
     return (baseAddr + fromIntegral offset)
+```
+
+# Interrupt Servicing
+
+This is really part of the CPU's control unit and not the execution unit, exactly, but it is much easier to write in terms of helpers we already have here that I don't really want to export outside this module because they are only actually safe when used correctly... in a way that they're always used here, but nevertheless.
+
+```haskell
+serviceInterrupt :: Interrupt -> Karaa Word8
+serviceInterrupt _ = fetchNext $ do
+    pc <- loadAddr ProgramCounter
+    let pc' = pc - 1
+
+    storeByte (IndirectWithMode StackPointer PreDecrement) (pc' ^. upper)
+
+    maybeIRQ <- checkForPendingInterrupt
+
+    storeByte (IndirectWithMode StackPointer PreDecrement) (pc' ^. lower)
+```
+
+Why do we check for interrupts again? In cases where we clobbered `IF` when we pushed `PC` on the stack, Strange Things™️ happen and we jump to `PC = 0x0000`.
+
+```haskell
+    case maybeIRQ of
+        Just irq -> do
+            clearInterrupt irq
+            storeAddr ProgramCounter isrAddr
+            where
+                isrAddr = case irq of
+                    VBlankInterrupt  -> 0x40
+                    LCDStatInterrupt -> 0x48
+                    TimerInterrupt   -> 0x50
+                    SerialInterrupt  -> 0x58
+                    JoypadInterrupt  -> 0x60
+        Nothing ->
+            storeAddr ProgramCounter 0
+
+    setInterruptStatus InterruptsDisabled
 ```

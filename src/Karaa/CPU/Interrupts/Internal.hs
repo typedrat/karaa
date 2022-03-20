@@ -12,7 +12,9 @@ module Karaa.CPU.Interrupts.Internal ( -- * @IRQState@
                                      , readInterruptRegisters
                                      , writeInterruptRegisters
                                      , InterruptStatus(..)
+                                     , areInterruptsEnabled
                                      , setInterruptStatus
+                                     , stepInterruptStatus
                                        -- * Setting, clearing, and checking interrupts
                                      , Interrupt( VBlankInterrupt, LCDStatInterrupt, TimerInterrupt, SerialInterrupt, JoypadInterrupt )
                                      , MonadInterrupt(..)
@@ -22,25 +24,38 @@ module Karaa.CPU.Interrupts.Internal ( -- * @IRQState@
                                      ) where
 
 import Control.Applicative       ( empty )
-import Control.Lens.Combinators  ( use, modifying )
+import Control.Lens.Combinators  ( use, uses, modifying )
 import Control.Lens.Lens         ( Lens' )
 import Control.Monad.State.Class ( MonadState)
 import Control.Monad.Trans.Maybe ( MaybeT )
-import Data.Bits                 ( (.&.), setBit, clearBit, countTrailingZeros )
+import Data.Bits                 ( (.&.), (.|.), setBit, clearBit, countTrailingZeros )
+import Data.List                 ( intercalate )
 import Data.Word                 ( Word8, Word16 )
 
+import Karaa.Util.Hex            ( showHex )
+
 -- | Tracks whether interrupts are enabled or disabled.
-data InterruptStatus = InterruptsEnabled | InterruptsDisabled
+data InterruptStatus = InterruptsEnabled | InterruptsDisabled | EIExecuted | EIPending
                      deriving (Show, Eq)
 
 -- | The [internal state of the interrupt unit](https://gbdev.io/pandocs/Interrupts.html), consisting of the interrupt
 --   status (IME), interrupt enable mask (IE), and the active interrupt flags (IF).
 data IRQState = IRQState { irqStatus :: !InterruptStatus, irqEnableMask :: !Word8, irqFlags :: !Word8 }
-              deriving (Show, Eq)
+              deriving (Eq)
+
+instance Show IRQState where
+    show IRQState{..} = "IRQState {" ++ fields ++ "}"
+        where 
+            fields = intercalate ", "
+                [ "irqStatus = "       <> show irqStatus
+                , "irqEnableMask = 0x" <> showHex irqEnableMask
+                , "irqFlags = 0x"      <> showHex irqFlags
+                ]
+
 
 -- | Constructs an 'IRQState' from the current interrupt status, interrupt enable mask, and interrupt flags.
 makeIRQState :: InterruptStatus -> Word8 -> Word8 -> IRQState
-makeIRQState status enableMask flags = IRQState status (enableMask .&. 0b0001_1111) (flags .&. 0b0001_1111)
+makeIRQState status enableMask flags = IRQState status (enableMask .|. 0b1110_0000) (flags .|. 0b1110_0000)
 
 -- | Classy lenses for accessing 'IRQState's.
 class HasIRQState st where
@@ -65,15 +80,31 @@ readInterruptRegisters _ = empty
 
 -- | Handles writes that may involve the interrupt unit's registers.
 writeInterruptRegisters :: (MonadState s m, HasIRQState s) => Word16 -> Word8 -> m ()
-writeInterruptRegisters 0xFF0F flags      = modifying irqState (\st -> st { irqFlags      = flags      .&. 0b0001_1111 })
-writeInterruptRegisters 0xFFFF enableMask = modifying irqState (\st -> st { irqEnableMask = enableMask .&. 0b0001_1111 })
+writeInterruptRegisters 0xFF0F flags      = modifying irqState (\st -> st { irqFlags      = flags      .|. 0b1110_0000 })
+writeInterruptRegisters 0xFFFF enableMask = modifying irqState (\st -> st { irqEnableMask = enableMask .|. 0b1110_0000 })
 writeInterruptRegisters _      _          = return ()
 {-# INLINE writeInterruptRegisters #-}
+
+-- | Gets the state of the interrupt unit's IME flag.
+areInterruptsEnabled :: (MonadState s m, HasIRQState s) => m Bool
+areInterruptsEnabled = uses irqState (\IRQState { irqStatus } -> irqStatus == InterruptsEnabled)
+{-# INLINE areInterruptsEnabled #-}
 
 -- | Sets the interrupt unit's IME flag.
 setInterruptStatus :: (MonadState s m, HasIRQState s) => InterruptStatus -> m ()
 setInterruptStatus irqStatus = modifying irqState (\st -> st { irqStatus })
 {-# INLINE setInterruptStatus #-}
+
+-- | Advance the IME flag state machine, which exists to handle the delay on `EI` instructions.
+stepInterruptStatus :: (MonadState s m, HasIRQState s) => m ()
+stepInterruptStatus = modifying irqState $
+    \st@(IRQState { irqStatus }) ->
+        let irqStatus' = case irqStatus of
+                EIExecuted -> EIPending
+                EIPending  -> InterruptsEnabled
+                status     -> status
+        in st { irqStatus = irqStatus' }
+{-# INLINE stepInterruptStatus #-}
 
 --
 
@@ -103,18 +134,17 @@ clearInterrupt (Interrupt irq) = modifying irqState $
     \st@(IRQState { irqFlags }) -> st { irqFlags = clearBit irqFlags irq }
 {-# INLINE clearInterrupt #-}
 
--- | Checks for enabled (@IME@ enabled), unmasked (@IE@ bit set), pending (@IF@ bit set) interrupts.
+-- | Checks for unmasked (@IE@ bit set), pending (@IF@ bit set) interrupts.
 checkForPendingInterrupt :: (MonadState s m, HasIRQState s) => m (Maybe Interrupt)
 checkForPendingInterrupt = do
-    IRQState { irqStatus, irqFlags, irqEnableMask } <- use irqState
+    IRQState { irqFlags, irqEnableMask } <- use irqState
 
-    case irqStatus of
-        InterruptsEnabled 
-            | firstInterrupt < 5 -> return (Just $ Interrupt firstInterrupt)
-            where
-                enabledInterrupts = irqFlags .&. irqEnableMask
-                firstInterrupt = countTrailingZeros enabledInterrupts
-        _ -> return Nothing
+    let enabledInterrupts = irqFlags .&. irqEnableMask
+        firstInterrupt = countTrailingZeros enabledInterrupts
+
+    if firstInterrupt < 5 
+            then return (Just $ Interrupt firstInterrupt)
+            else return Nothing
 {-# INLINE checkForPendingInterrupt #-}
 
 --

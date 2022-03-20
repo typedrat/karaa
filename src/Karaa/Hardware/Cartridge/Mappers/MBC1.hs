@@ -8,7 +8,7 @@ import           Data.Bits
 import qualified Data.ByteString                       as BS
 import           Data.Word                             ( Word8, Word16 )
 
-import           Karaa.Core.Types.Memory
+import           Karaa.Core.Types.Memory               hiding ( romSize, ramSize )
 import           Karaa.Hardware.Cartridge.Header.Types
 
 data MBC1Cartridge = MBC1Cartridge { mbc1ROM :: Banked ROM, mbc1RAM :: Maybe (Banked RAM)

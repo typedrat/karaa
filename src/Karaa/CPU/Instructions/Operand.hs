@@ -1,4 +1,6 @@
 module Karaa.CPU.Instructions.Operand ( Operand(..)
+                                      , pattern ProgramCounter, pattern StackPointer
+                                      , pattern Accumulator, pattern WideAccumulator
                                       , zeroFlag, subtractionFlag, halfCarryFlag, carryFlag
                                       , AddressMode(..)
                                       , Mutability(..)
@@ -10,7 +12,7 @@ import Data.Int            ( Int8 )
 import Data.Word           ( Word8, Word16 )
 import Prettyprinter       ( Pretty(..), parens )
 
-import Karaa.CPU.Registers ( WideRegister, Register, Flag(..) )
+import Karaa.CPU.Registers ( WideRegister( HL, PC, SP ), Register( A ), Flag(..) )
 
 -- | The special addressing modes of the GameBoy's CPU.
 data AddressMode = PreIncrement  | PreDecrement 
@@ -36,6 +38,18 @@ data Operand (mut :: Mutability) (a :: Type) where
     HimemIndirect    :: !(Operand mut Word8)                  -> Operand 'RW Word8
 
 deriving instance Show (Operand mut a)
+
+pattern ProgramCounter :: () => (mut ~ 'RW) => Operand mut Word16
+pattern ProgramCounter = WideRegister PC
+
+pattern StackPointer :: () => (mut ~ 'RW) => Operand mut Word16
+pattern StackPointer = WideRegister SP
+
+pattern Accumulator :: () => (mut ~ 'RW) => Operand mut Word8
+pattern Accumulator = Register A
+
+pattern WideAccumulator :: () => (mut ~ 'RW) => Operand mut Word16
+pattern WideAccumulator = WideRegister HL
 
 zeroFlag, subtractionFlag, halfCarryFlag, carryFlag :: Operand 'RW Bool
 zeroFlag        = Flag Zero

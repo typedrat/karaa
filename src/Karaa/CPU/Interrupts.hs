@@ -18,4 +18,4 @@ import Karaa.CPU.Interrupts.Internal
 -- | A suitable initial state for the IRQ unit, with interrupts disabled, no
 --   pending interrupts, and no enabled interrrupts.
 initialIRQState :: IRQState
-initialIRQState = makeIRQState InterruptsDisabled 0 0
+initialIRQState = makeIRQState InterruptsDisabled 0xE1 0

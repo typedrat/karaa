@@ -125,15 +125,17 @@ instance HasRegisterFile RegisterFile where
     {-# INLINE flag #-}
 
 instance Show RegisterFile where
-    show RegisterFile{..} = intercalate ", "
-        [ "AF = "    <> showHex regAF
-        , "BC = "    <> showHex regBC
-        , "DE = "    <> showHex regDE
-        , "HL = "    <> showHex regHL
-        , "PC = "    <> showHex regPC
-        , "SP = "    <> showHex regSP
-        , "Flags = " <> showFlags regAF
-        ]
+    show RegisterFile{..} = "RegisterFile {" ++ fields ++ "}"
+        where 
+            fields = intercalate ", "
+                [ "regAF = " <> showHex regAF
+                , "regBC = " <> showHex regBC
+                , "regDE = " <> showHex regDE
+                , "regHL = " <> showHex regHL
+                , "regPC = " <> showHex regPC
+                , "regSP = " <> showHex regSP
+                , "flags = " <> showFlags regAF
+                ]
 
 showFlags :: Word16 -> String
 showFlags w16 = zipWith go flags "znhc"

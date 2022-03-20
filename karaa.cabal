@@ -105,5 +105,6 @@ executable karaa
                      , filepath ^>= 1.4.2.1
                      , directory ^>= 1.3.6.0
                      , exceptions
+                     , pretty-simple ^>= 3.3.0.0
   hs-source-dirs:      app
   default-language:    Haskell2010

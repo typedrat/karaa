@@ -2,21 +2,20 @@ module Main where
 
 import           Control.Lens
 import           Control.Monad              ( mapM, void )
-import           Control.Monad.Catch        ( handleIf )
 import           Control.Monad.IO.Class     ( liftIO )
-import           Control.Monad.State.Strict ( runStateT )
+import           Control.Monad.State.Strict ( StateT(..), get )
 import           Control.Monad.Trans        ( lift )
 import qualified Data.ByteString            as BS
 import           Data.List                  ( intercalate )
 import           Data.Maybe                 ( fromMaybe )
 import           Data.Word                  ( Word8, Word16 )
 import           Text.Read                  ( readMaybe )
+import           Text.Pretty.Simple         ( pPrint )
 import           System.Console.Repline
-import           System.Directory           ( removeFile )
 import           System.Environment         ( getArgs, getProgName )
 import           System.Exit                ( exitFailure )
 import           System.FilePath            ( takeFileName, (-<.>) )
-import           System.IO.Error            ( isDoesNotExistError )
+import           System.IO
 
 import           Karaa.Core.Monad
 import           Karaa.CPU
@@ -34,6 +33,8 @@ import           Karaa.Hardware.State
 import           Karaa.Hardware.WorkRAM
 import           Karaa.Util.Hex
 
+type KaraaREPL = HaskelineT (StateT (EmulatorState, Word8) IO)
+
 main :: IO ()
 main = forceDecoderTables
     >> getArgs >>= \case
@@ -48,7 +49,9 @@ runRepl path = do
     cartBS <- BS.readFile path
 
     let logPath = takeFileName path -<.> "txt"
-    handleIf isDoesNotExistError (\_ -> return ()) (removeFile logPath)
+    logFile <- openFile logPath WriteMode
+
+    hSetBuffering stdout NoBuffering
 
     case loadCartridgeFromByteString cartBS Nothing of
         Left InvalidHeader                  -> putStrLn "The cartridge header is invalid."
@@ -57,65 +60,93 @@ runRepl path = do
         Right cart -> void $ do
             hram <- makeHighRAM
             wram <- makeWorkRAM
+            
             let serialPort = makeSerialPort putCharSerialCallback
                 hwState = HardwareState cart hram serialPort wram
                 emuState = EmulatorState initialCPUState hwState
-            
-            flip runStateT emuState . runKaraa $ do
-                evalRepl prompt (commands logPath) monitorOptions optionPrefix Nothing (Word $ \_ -> return []) (return ()) (return Exit) 
 
-prompt :: MultiLine -> HaskelineT Karaa String
+            flip runStateT (emuState, 0x00) $ do
+                evalRepl prompt (commands logFile) monitorOptions optionPrefix Nothing (Word $ \_ -> return []) (return ()) (return Exit)
+
+    hClose logFile
+
+prompt :: MultiLine -> KaraaREPL String
 prompt _ = pure "γβ> "
 
-commands :: FilePath -> String -> HaskelineT Karaa ()
-commands logPath cmd = case words cmd of
-    ["read", (readMaybe -> Just addr)] -> lift $ readCommand addr 1
-    ["read", (readMaybe -> Just addr)
-           , (readMaybe -> Just off)]  -> lift $ readCommand addr off
-    ["regs"] -> lift regsCommand
-    ["step"] -> lift (stepCommand Nothing)
-    ["run"]  -> lift (runCommand  Nothing)
-    ["tracestep"] -> lift (stepCommand $ Just logPath)
-    ["tracerun"]  -> lift (runCommand  $ Just logPath)
-    [] -> return ()
-    _  -> liftIO $ putStrLn ("Unknown command: " ++ cmd)
+commands :: Handle -> String -> KaraaREPL ()
+commands logFile cmd = do
+    case words cmd of
+        ["read", readMaybe -> Just addr] -> commandWrapper $ readCommand addr 1
+        ["read", readMaybe -> Just addr
+            , readMaybe -> Just off    ]  -> commandWrapper $ readCommand addr off
+        ["regs"]  -> commandWrapper regsCommand
+        ["state"] -> commandWrapper stateCommand
+        ["step"]      -> commandWithNextOpcode (stepCommand $ Just stdout)
+        ["tracestep"] -> commandWithNextOpcode (stepCommand $ Just logFile)
+        ["run"]       -> commandWithNextOpcode (runCommand   Nothing)
+        ["tracerun"]  -> commandWithNextOpcode (runCommand $ Just logFile)
+        ["run",      readMaybe -> Just addr] -> commandWithNextOpcode (runUntilCommand Nothing        addr)
+        ["tracerun", readMaybe -> Just addr] -> commandWithNextOpcode (runUntilCommand (Just logFile) addr)
+        [] -> return ()
+        _  -> liftIO $ putStrLn ("Unknown command: " ++ cmd)
+    
+    liftIO $ hFlush logFile
+
+commandWrapper :: Karaa a -> KaraaREPL a
+commandWrapper = lift . zoom _1 . runKaraa
+
+commandWithNextOpcode :: (Word8 -> Karaa Word8) -> KaraaREPL ()
+commandWithNextOpcode cmd = do
+    opcode <- use _2
+    nextOpcode <- commandWrapper (cmd opcode)
+    assign _2 nextOpcode
 
 readCommand :: Word16 -> Int -> Karaa ()
 readCommand base off
     | off > 8   = readCommand base       8
                >> readCommand (base + 8) (off - 8)
     | otherwise = liftIO . putStrLn . bytes =<< mapM readAddr (addrRange base off)
-    where bytes = intercalate " " . fmap showHex
+    where bytes = unwords . fmap showHex
 
 regsCommand :: Karaa ()
-regsCommand = do
-    regs <- use registerFile
-    let regs' = regs & wideRegister PC -~ 1
-    liftIO $ print regs'
+regsCommand = logStep stdout
 
-logStep :: FilePath -> Karaa ()
-logStep path = do
+stateCommand :: Karaa ()
+stateCommand = do
+    state <- get
+    let state' = state & wideRegister PC -~ 1
+    liftIO $ pPrint state'
+
+logStep :: Handle -> Karaa ()
+logStep logFile = do
     regs <- use registerFile
     let regs' = regs & wideRegister PC -~ 1
         regDumps = (\r -> show r ++ ": " ++ showHex (regs' ^. register r)) <$> [A, F, B, C, D, E, H, L]
         wideRegDumps = (\wr -> show wr ++ ": " ++ showHex (regs' ^. wideRegister wr)) <$>  [SP, PC]
         pc = regs' ^. wideRegister PC
     bytes <- mapM (fmap showHex . readAddr) [pc .. pc + 3]
-    let bytesDump = " (" ++ intercalate " " bytes ++ ")"
+    let bytesDump = " (" ++ unwords bytes ++ ")"
 
-    liftIO $ appendFile path (intercalate " " (regDumps ++ wideRegDumps) ++ bytesDump ++ "\n")
+    liftIO $ hPutStrLn logFile (unwords (regDumps ++ wideRegDumps) ++ bytesDump)
 
-stepCommand :: Maybe FilePath -> Karaa () 
-stepCommand logPath = do
-    opcode <- use nextOpcode
-    let instruction = decodeInstruction opcode
-        mnemonic = toMnemonic instruction
-    maybe (return ()) logStep logPath
-    assign nextOpcode =<< execute instruction
+stepCommand :: Maybe Handle -> Word8 -> Karaa Word8
+stepCommand logFile opcode = do
+    maybe (return ()) logStep logFile
+    cpuStep opcode
 
-runCommand :: Maybe FilePath -> Karaa ()
-runCommand logPath = go
-    where go = stepCommand logPath >> go
+runCommand :: Maybe Handle -> Word8 -> Karaa Word8
+runCommand logFile = go
+    where go op = stepCommand logFile op >>= go
+
+runUntilCommand :: Maybe Handle -> Word16 -> Word8 -> Karaa Word8
+runUntilCommand logFile breakAddr = go
+    where
+        go op = do
+            pc <- use (wideRegister PC)
+
+            if (pc - 1) == breakAddr
+                then return op
+                else stepCommand logFile op >>= go
 
 addrRange :: Word16 -> Int -> [Word16]
 addrRange base 0   = []
@@ -123,8 +154,8 @@ addrRange base off = [base, base + direction .. end]
     where direction = fromIntegral (signum off)
           end = fromIntegral (fromIntegral base + off - 1)
 
-monitorOptions :: Options (HaskelineT Karaa)
+monitorOptions :: Options KaraaREPL
 monitorOptions = []
 
 optionPrefix :: Maybe Char
-optionPrefix = Just ':'
+optionPrefix = Nothing

@@ -31,6 +31,7 @@ readHardware addr = readWorkRAM addr
 {-# INLINE readHardware #-}
 
 ioMemoryFallback :: (Monad m) => Word16 -> MaybeT m Word8
+ioMemoryFallback 0xFF44 = pure 0x90
 ioMemoryFallback addr
     | addr >= 0xFF00 = pure 0xFF
     | otherwise      = empty
