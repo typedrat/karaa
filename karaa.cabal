@@ -37,6 +37,8 @@ common language
                      , ViewPatterns
   other-extensions:    OverloadedLists
 
+  ghc-options:         -O2 -Wall
+
 source-repository head
   type: git
   location: git://git@github.com:typedrat/karaa.git
@@ -85,7 +87,6 @@ library
                      , megaparsec    ^>= 9.2.0
                      , bits-extra     == 0.0.2.0
   hs-source-dirs:      src
-  ghc-options:         -O2 -Wall
 
   build-tool-depends:  markdown-unlit:markdown-unlit ^>= 0.5.1
   ghc-options:         -pgmL markdown-unlit
@@ -108,4 +109,4 @@ executable karaa
                      , exceptions
                      , pretty-simple ^>= 3.3.0.0
   hs-source-dirs:      app
-  default-language:    Haskell2010
+  ghc-options:         -threaded -rtsopts

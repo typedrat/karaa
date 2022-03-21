@@ -10,7 +10,6 @@ module Karaa.Hardware.Cartridge.Header ( module Karaa.Hardware.Cartridge.Header.
 import           Data.Bits                   ( shiftL )
 import qualified Data.ByteString             as BS
 import           Data.Functor                ( ($>) )
-import qualified Data.List.NonEmpty          as NE
 import           Data.Proxy                  ( Proxy(..) )
 import           Data.Void                   ( Void )
 import           Data.Word                   ( Word8 )
@@ -100,12 +99,12 @@ cartMapperInfo = label "mapper type" $ word8 >>= \case
     0xFE -> pure   HudsonHuC3
     0xFF -> pure   HudsonHuC1
 
-    code -> unexpected (Tokens $ NE.singleton code)
+    code -> unexpected (Tokens $ pure code)
 
 cartROMSize :: Parser Int
 cartROMSize = label "ROM size" $ word8 >>= \case
     size | size <= 0x08 -> pure $ (32 * 1024) `shiftL` fromIntegral size
-         | otherwise    -> unexpected (Tokens $ NE.singleton size)
+         | otherwise    -> unexpected (Tokens $ pure size)
 
 cartRAMSize :: Parser Int
 cartRAMSize = label "RAM size" $ word8 >>= \case
@@ -114,7 +113,7 @@ cartRAMSize = label "RAM size" $ word8 >>= \case
     0x03 -> pure (4  * 8 * 1024)
     0x04 -> pure (16 * 8 * 1024)
     0x05 -> pure (8  * 8 * 1024)
-    size -> unexpected (Tokens $ NE.singleton size)
+    size -> unexpected (Tokens $ pure size)
 
 cartIsJapaneseMarket :: Parser Bool
 cartIsJapaneseMarket = (== 0x00) <$> word8
