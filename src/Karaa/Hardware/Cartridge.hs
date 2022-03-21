@@ -26,6 +26,7 @@ class HasCartridge s where
 
 instance HasCartridge Cartridge where
     cartridge = id
+    {-# INLINE cartridge #-}
 
 --
 

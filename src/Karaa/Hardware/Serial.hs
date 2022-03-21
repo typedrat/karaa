@@ -67,6 +67,7 @@ class HasSerialPort s where
 
 instance HasSerialPort SerialPort where
     serialPort = id
+    {-# INLINE serialPort #-}
 
 --
 
