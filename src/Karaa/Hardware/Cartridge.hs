@@ -17,8 +17,8 @@ import           Karaa.Core.Types.Memory
 import           Karaa.Hardware.Cartridge.Header
 import           Karaa.Hardware.Cartridge.Mappers
 
-data Cartridge = ROMOnlyCartridge ROMOnlyCartridge
-               | MBC1Cartridge    MBC1Cartridge
+data Cartridge = ROMOnlyCartridge !ROMOnlyCartridge
+               | MBC1Cartridge    !MBC1Cartridge
                deriving (Show)
 
 class HasCartridge s where

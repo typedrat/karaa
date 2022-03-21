@@ -17,11 +17,11 @@ import Karaa.Hardware.Serial
 import Karaa.Hardware.Timer
 import Karaa.Hardware.WorkRAM
 
-data HardwareState = HardwareState { hwCartridge :: Cartridge
-                                   , hwHighRAM :: HighRAM
-                                   , hwSerialPort :: SerialPort
-                                   , hwTimer :: Timer
-                                   , hwWorkRAM :: WorkRAM
+data HardwareState = HardwareState { hwCartridge  :: !Cartridge
+                                   , hwHighRAM    :: !HighRAM
+                                   , hwSerialPort :: !SerialPort
+                                   , hwTimer      :: !Timer
+                                   , hwWorkRAM    :: !WorkRAM
                                    }
                    deriving (Show)
 

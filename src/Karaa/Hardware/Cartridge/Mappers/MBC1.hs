@@ -11,10 +11,10 @@ import           Data.Word                             ( Word8, Word16 )
 import           Karaa.Core.Types.Memory               hiding ( romSize, ramSize )
 import           Karaa.Hardware.Cartridge.Header.Types
 
-data MBC1Cartridge = MBC1Cartridge { mbc1ROM :: Banked ROM, mbc1RAM :: Maybe (Banked RAM)
-                                   , ramEnabled :: Bool, romBank :: Word8
-                                   , secondaryBank :: Word8, bankingMode :: BankingMode
-                                   , mbc1Config :: MBC1Configuration
+data MBC1Cartridge = MBC1Cartridge { mbc1ROM :: !(Banked ROM), mbc1RAM :: Maybe (Banked RAM)
+                                   , ramEnabled :: !Bool, romBank :: !Word8
+                                   , secondaryBank :: !Word8, bankingMode :: !BankingMode
+                                   , mbc1Config :: !MBC1Configuration
                                    }
                    deriving (Show)
 

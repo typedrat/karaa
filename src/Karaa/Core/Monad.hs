@@ -28,7 +28,7 @@ import Karaa.Hardware.WorkRAM
 
 --
 
-data EmulatorState = EmulatorState { emuCPUState :: CPUState, emuHardwareState :: HardwareState }
+data EmulatorState = EmulatorState { emuCPUState :: !CPUState, emuHardwareState :: !HardwareState }
                    deriving (Show)
 
 --
