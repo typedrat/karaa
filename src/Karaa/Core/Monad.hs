@@ -22,6 +22,7 @@ import Karaa.Hardware.Cartridge
 import Karaa.Hardware.HighRAM
 import Karaa.Hardware.State
 import Karaa.Hardware.Serial
+import Karaa.Hardware.Timer
 import Karaa.Hardware.WorkRAM
 
 
@@ -57,6 +58,10 @@ instance HasHighRAM EmulatorState where
 instance HasSerialPort EmulatorState where
     serialPort = hardwareState . serialPort
     {-# INLINE serialPort #-}
+
+instance HasTimer EmulatorState where
+    timer = hardwareState . timer
+    {-# INLINE timer #-}
 
 instance HasWorkRAM EmulatorState where
     workRAM = hardwareState . workRAM

@@ -30,6 +30,7 @@ import           Karaa.Hardware.Cartridge
 import           Karaa.Hardware.HighRAM
 import           Karaa.Hardware.Serial
 import           Karaa.Hardware.State
+import           Karaa.Hardware.Timer
 import           Karaa.Hardware.WorkRAM
 import           Karaa.Util.Hex
 
@@ -62,7 +63,7 @@ runRepl path = do
             wram <- makeWorkRAM
             
             let serialPort = makeSerialPort putCharSerialCallback
-                hwState = HardwareState cart hram serialPort wram
+                hwState = HardwareState cart hram serialPort initialTimerState wram
                 emuState = EmulatorState initialCPUState hwState
 
             flip runStateT (emuState, 0x00) $ do

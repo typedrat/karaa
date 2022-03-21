@@ -14,12 +14,18 @@ import Karaa.Core.Types.Memory   ( MonadRAM )
 import Karaa.Hardware.Cartridge
 import Karaa.Hardware.HighRAM
 import Karaa.Hardware.Serial
+import Karaa.Hardware.Timer
 import Karaa.Hardware.WorkRAM
 
-data HardwareState = HardwareState { hwCartridge :: Cartridge, hwHighRAM :: HighRAM, hwSerialPort :: SerialPort, hwWorkRAM :: WorkRAM }
+data HardwareState = HardwareState { hwCartridge :: Cartridge
+                                   , hwHighRAM :: HighRAM
+                                   , hwSerialPort :: SerialPort
+                                   , hwTimer :: Timer
+                                   , hwWorkRAM :: WorkRAM
+                                   }
                    deriving (Show)
 
-class (HasCartridge s, HasHighRAM s, HasSerialPort s, HasWorkRAM s) => HasHardwareState s where
+class (HasCartridge s, HasHighRAM s, HasSerialPort s, HasTimer s, HasWorkRAM s) => HasHardwareState s where
     hardwareState :: Lens' s HardwareState
 
 readHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> MaybeT m Word8 
@@ -27,6 +33,7 @@ readHardware addr = readWorkRAM addr
                 <|> readCartridge addr
                 <|> readHighRAM addr
                 <|> readSerialPortRegisters addr
+                <|> readTimerRegisters addr
                 <|> ioMemoryFallback addr
 {-# INLINE readHardware #-}
 
@@ -42,12 +49,14 @@ writeHardware addr byte = do
     writeCartridge addr byte
     writeHighRAM addr byte
     writeSerialPortRegisters addr byte
+    writeTimerRegisters addr byte
 {-# INLINE writeHardware #-}
 
 tickHardware :: (MonadState s m, HasHardwareState s, MonadInterrupt m, MonadIO m) => m ()
 tickHardware = do
     tickCartridge
     tickSerialPort
+    tickTimer
 {-# INLINE tickHardware #-}
 
 --
@@ -67,6 +76,10 @@ instance HasHighRAM HardwareState where
 instance HasSerialPort HardwareState where
     serialPort = lens (\HardwareState { hwSerialPort } -> hwSerialPort) (\st hwSerialPort -> st { hwSerialPort })
     {-# INLINE serialPort #-}
+
+instance HasTimer HardwareState where
+    timer = lens (\HardwareState { hwTimer } -> hwTimer) (\st hwTimer -> st { hwTimer })
+    {-# INLINE timer #-}
 
 instance HasWorkRAM HardwareState where
     workRAM = lens (\HardwareState { hwWorkRAM } -> hwWorkRAM) (\st hwWorkRAM -> st { hwWorkRAM })

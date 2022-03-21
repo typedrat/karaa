@@ -68,6 +68,7 @@ library
                      , Karaa.Hardware.HighRAM
                      , Karaa.Hardware.Serial
                      , Karaa.Hardware.State
+                     , Karaa.Hardware.Timer
                      , Karaa.Hardware.WorkRAM
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
@@ -82,7 +83,7 @@ library
                      , lens          ^>= 5.1
                      , prettyprinter ^>= 1.7.1
                      , megaparsec    ^>= 9.2.0
-                     , bits-extra    ^>= 0.0.2.0
+                     , bits-extra     == 0.0.2.0
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
 
