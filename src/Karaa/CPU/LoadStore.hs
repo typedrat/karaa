@@ -16,6 +16,7 @@ import Karaa.Util.ByteLenses          ( lower, upper )
 loadFlag :: Operand mut Bool -> Karaa Bool
 loadFlag (Flag fl)    = use (flag fl)
 loadFlag (NotFlag fl) = not <$> use (flag fl)
+{-# INLINE loadFlag #-}
 
 loadByte :: Operand mut Word8 -> Karaa Word8
 loadByte (Register reg) = use (register reg)
@@ -38,23 +39,27 @@ loadByte (HimemIndirect op) = do
     let addr = 0xFF00 .|. fromIntegral lowerAddr
     tick
     readAddr addr
+{-# INLINE loadByte #-}
 
 loadInt :: Operand mut Int8 -> Karaa Int8
 loadInt ImmediateInt8 = do
     tick
     fmap fromIntegral . readAddr =<< (wideRegister PC <<+= 1)
+{-# INLINE loadInt #-}
 
 loadLower :: Operand mut Word16 -> Karaa Word8
 loadLower (WideRegister wr) = use (wideRegister wr . lower)
 loadLower ImmediateWord16   = do
     tick
     readAddr =<< (wideRegister PC <<+= 1)
+{-# INLINE loadLower #-}
 
 loadUpper :: Operand mut Word16 -> Karaa Word8
 loadUpper (WideRegister wr) = use (wideRegister wr . upper)
 loadUpper ImmediateWord16   = do
     tick
     readAddr =<< (wideRegister PC <<+= 1)
+{-# INLINE loadUpper #-}
 
 loadAddr :: Operand mut Word16 -> Karaa Word16
 loadAddr (WideRegister wr) = use (wideRegister wr)
@@ -64,12 +69,14 @@ loadAddr ImmediateWord16   = do
     tick
     upperByte <- readAddr =<< (wideRegister PC <<+= 1)
     return $ (fromIntegral upperByte `shiftL` 8) .|. fromIntegral lowerByte
+{-# INLINE loadAddr #-}
 
 --
 
 storeFlag :: Operand 'RW Bool -> Bool -> Karaa ()
 storeFlag (Flag fl)    val = assign (flag fl) val
 storeFlag (NotFlag fl) val = assign (flag fl) (not val)
+{-# INLINE storeFlag #-}
 
 storeByte :: Operand 'RW Word8 -> Word8 -> Karaa ()
 storeByte (Register reg) val = assign (register reg) val
@@ -88,15 +95,19 @@ storeByte (HimemIndirect op) val = do
     lowerAddr <- loadByte op
     let addr = 0xFF00 .|. fromIntegral lowerAddr
     writeAddr addr val
+{-# INLINE storeByte #-}
 
 storeLower :: Operand 'RW Word16 -> Word8 -> Karaa ()
 storeLower (WideRegister wr) = assign (wideRegister wr . lower)
+{-# INLINE storeLower #-}
 
 storeUpper :: Operand 'RW Word16 -> Word8 -> Karaa ()
 storeUpper (WideRegister wr) = assign (wideRegister wr . upper)
+{-# INLINE storeUpper #-}
 
 storeAddr :: Operand 'RW Word16 -> Word16 -> Karaa ()
 storeAddr (WideRegister wr) = assign (wideRegister wr)
+{-# INLINE storeAddr #-}
 
 addressWithOp :: Operand 'RW Word16 -> AddressMode -> Karaa Word16
 addressWithOp (WideRegister wr) PreIncrement  = wideRegister wr  <+= 1
