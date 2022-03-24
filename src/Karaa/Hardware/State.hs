@@ -54,9 +54,9 @@ writeHardware addr byte = do
 
 tickHardware :: (MonadState s m, HasHardwareState s, MonadInterrupt m, MonadIO m) => m ()
 tickHardware = do
-    tickCartridge
-    tickSerialPort
     tickTimer
+    tickSerialPort
+    tickCartridge
 {-# INLINE tickHardware #-}
 
 --
