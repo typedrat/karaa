@@ -3,8 +3,7 @@ module Karaa.Hardware.Timer ( Timer(), initialTimerState, HasTimer(..), readTime
 import Control.Applicative       ( Alternative(..) )
 import Control.Lens.Lens         ( Lens', lens )
 import Control.Lens.Combinators  ( use )
-import Control.Lens.Operators    ( (<%=), (<+=), (%=), (.=) )
-import Control.Monad             ( when )
+import Control.Lens.Operators    ( (.=), (%=) )
 import Control.Monad.State.Class ( MonadState )
 import Control.Monad.Trans.Maybe ( MaybeT )
 import Data.Bits                 ( Bits(..) )
@@ -17,7 +16,7 @@ import Karaa.Util.ByteLenses     ( upper, lower )
 data Timer = Timer { internalCounter :: !Word16
                    , counter :: !Word16
                    , initialOffset :: !Word8
-                   , justOverflowed :: !(Maybe Int)
+                   , justOverflowed :: !Int -- Somewhat abused! Really something more like Maybe Word, but with the sign bit used for tagging.
                    , prescaler :: !TimerPrescaler
                    , lastPrescalerBit :: !Bool
                    , enabled :: !Bool
@@ -28,7 +27,7 @@ initialTimerState :: Timer
 initialTimerState = Timer { internalCounter = 0
                           , counter = 0
                           , initialOffset = 0
-                          , justOverflowed = Nothing
+                          , justOverflowed = -1
                           , prescaler = Prescaler1024
                           , lastPrescalerBit = False
                           , enabled = False
@@ -55,13 +54,9 @@ initialOffset_ :: (HasTimer s) => Lens' s Word8
 initialOffset_ = timer . lens (\Timer { initialOffset } -> initialOffset) (\st initialOffset -> st { initialOffset })
 {-# INLINE initialOffset_ #-}
 
-justOverflowed_ :: (HasTimer s) => Lens' s (Maybe Int)
+justOverflowed_ :: (HasTimer s) => Lens' s Int
 justOverflowed_ = timer . lens (\Timer { justOverflowed } -> justOverflowed) (\st justOverflowed -> st { justOverflowed })
 {-# INLINE justOverflowed_ #-}
-
-lastPrescalerBit_ :: (HasTimer s) => Lens' s Bool
-lastPrescalerBit_ = timer . lens (\Timer { lastPrescalerBit } -> lastPrescalerBit) (\st lastPrescalerBit -> st { lastPrescalerBit })
-{-# INLINE lastPrescalerBit_ #-}
 
 --
 
@@ -79,7 +74,7 @@ getTimerControlRegister Timer{..} = 0b1111_1000 .|. getEnableBit enabled .|. get
 writeTimerRegisters :: (MonadState s m, HasTimer s) => Word16 -> Word8 -> m ()
 writeTimerRegisters 0xFF04 _    = internalTimer   .= 0
 writeTimerRegisters 0xFF05 byte = counter_        .= fromIntegral byte
-                               >> justOverflowed_ .= Nothing
+                               >> justOverflowed_ .= -1
 writeTimerRegisters 0xFF06 byte = initialOffset_  .= byte
 writeTimerRegisters 0xFF07 byte = timer           %= setTimerControlRegister byte
 writeTimerRegisters _      _    = return ()
@@ -90,29 +85,35 @@ setTimerControlRegister byte st = st { prescaler = selectPrescalerBit byte, enab
 
 tickTimer :: (MonadState s m, HasTimer s, MonadInterrupt m) => m ()
 tickTimer = do
-    Timer { initialOffset
-          , prescaler
-          , lastPrescalerBit
-          , enabled
-          } <- use timer
-    newDIV <- internalTimer <+= 1
-    let newPrescalerBit = enabled && checkPrescalerBit newDIV prescaler
+    oldTimer@Timer {..} <- use timer
+    let newDIV = internalCounter + 1
+        newPrescalerBit = enabled && checkPrescalerBit newDIV prescaler
+        justOverflowed' = justOverflowed - 1
 
-    justOverflowed <- justOverflowed_ <%= fmap (subtract 1)
+    (counter', justOverflowed'') <-
+        if justOverflowed' == 0
+            then do
+                triggerInterrupt TimerInterrupt
+                return (fromIntegral initialOffset, -1)
+            else
+                return (counter, justOverflowed')
 
-    when (justOverflowed == Just 0) $ do
-        triggerInterrupt TimerInterrupt
-        counter_ .= fromIntegral initialOffset
-        justOverflowed_ .= Nothing
+    (counter'', justOverflowed''') <-
+        if lastPrescalerBit && not newPrescalerBit
+            then do
+                let newCounter = counter' + 1
+                
+                if newCounter > 0xFF
+                    then return (0, 4)
+                    else return (newCounter, justOverflowed'')
+            else
+                return (counter', justOverflowed'')
 
-    when (lastPrescalerBit && not newPrescalerBit) $ do
-        newCounter <- counter_ <+= 1
-        
-        when (newCounter > 0xFF) $ do
-            counter_ .= 0
-            justOverflowed_ .= Just 4
-
-    lastPrescalerBit_ .= newPrescalerBit
+    timer .= oldTimer { internalCounter = newDIV
+                      , counter = counter''
+                      , justOverflowed = justOverflowed'''
+                      , lastPrescalerBit = newPrescalerBit
+                      }
 {-# INLINE tickTimer #-}
 
 --
