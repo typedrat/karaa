@@ -18,6 +18,6 @@ A Haskell GameBoy emulator. It intends to be as accurate as possible to the orig
 
 ## Status
 
-Currently, we pass all of Blargg's `cpu_instrs` test ROM, except for interrupts because those are not yet implemented.
+Currently, we pass all of Blargg's `cpu_instrs` test ROM. We're unfortunately pretty slow, only running about 450% faster than real hardware.
 
-Further testing is awaiting implementation of the PPU and timer functionality.
+Further testing is awaiting implementation of the PPU.
