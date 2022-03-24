@@ -111,4 +111,4 @@ executable karaa
                      , exceptions
                      , pretty-simple ^>= 3.3.0.0
   hs-source-dirs:      app
-  ghc-options:         -threaded -rtsopts
+  ghc-options:         -threaded -with-rtsopts=-A4m
