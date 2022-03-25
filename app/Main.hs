@@ -131,13 +131,11 @@ stepCommand logFile opcode = do
 
 runCommand :: Maybe Handle -> Word8 -> Karaa Word8
 runCommand logFile = go
-    where go 0x40 = return 0x40
-          go op   = stepCommand logFile op >>= go
+    where go op   = stepCommand logFile op >>= go
 
 runUntilCommand :: Maybe Handle -> Word16 -> Word8 -> Karaa Word8
 runUntilCommand logFile breakAddr = go
     where
-        go 0x40 = return 0x40
         go op   = do
             pc <- use (wideRegister PC)
 
