@@ -1,34 +1,28 @@
 module Main where
 
-import           Control.Lens
-import           Control.Monad              ( mapM, void )
-import           Control.Monad.IO.Class     ( liftIO )
-import           Control.Monad.State.Strict ( StateT(..), get )
-import           Control.Monad.Trans        ( lift )
-import qualified Data.ByteString            as BS
-import           Data.List                  ( intercalate )
-import           Data.Maybe                 ( fromMaybe )
-import           Data.Word                  ( Word8, Word16 )
-import           Text.Read                  ( readMaybe )
-import           Text.Pretty.Simple         ( pPrint )
+import           Control.Lens                  hiding ( op )
+import           Control.Monad                 ( void )
+import           Control.Monad.IO.Class        ( liftIO )
+import           Control.Monad.State.Strict    ( StateT(..), get )
+import           Control.Monad.Trans           ( lift )
+import qualified Data.ByteString               as BS
+import           Data.Word                     ( Word8, Word16 )
+import           Text.Read                     ( readMaybe )
+import           Text.Pretty.Simple            ( pPrint )
 import           System.Console.Repline
-import           System.Environment         ( getArgs, getProgName )
-import           System.Exit                ( exitFailure )
-import           System.FilePath            ( takeFileName, (-<.>) )
+import           System.Environment            ( getArgs, getProgName )
+import           System.Exit                   ( exitFailure )
+import           System.FilePath               ( takeFileName, (-<.>) )
 import           System.IO
 
 import           Karaa.Core.Monad
 import           Karaa.CPU
-import           Karaa.CPU.Execution
 import           Karaa.CPU.Instructions.Decode
-import           Karaa.CPU.Instructions.Mnemonic
-import           Karaa.CPU.Instructions.Operand
-import           Karaa.CPU.LoadStore
 import           Karaa.CPU.Registers
 import           Karaa.CPU.State
 import           Karaa.Hardware.Cartridge
 import           Karaa.Hardware.HighRAM
-import           Karaa.Hardware.Serial
+import           Karaa.Hardware.Serial         ( makeSerialPort, putCharSerialCallback )
 import           Karaa.Hardware.State
 import           Karaa.Hardware.Timer
 import           Karaa.Hardware.WorkRAM
@@ -137,12 +131,14 @@ stepCommand logFile opcode = do
 
 runCommand :: Maybe Handle -> Word8 -> Karaa Word8
 runCommand logFile = go
-    where go op = stepCommand logFile op >>= go
+    where go 0x40 = return 0x40
+          go op   = stepCommand logFile op >>= go
 
 runUntilCommand :: Maybe Handle -> Word16 -> Word8 -> Karaa Word8
 runUntilCommand logFile breakAddr = go
     where
-        go op = do
+        go 0x40 = return 0x40
+        go op   = do
             pc <- use (wideRegister PC)
 
             if (pc - 1) == breakAddr
@@ -150,8 +146,8 @@ runUntilCommand logFile breakAddr = go
                 else stepCommand logFile op >>= go
 
 addrRange :: Word16 -> Int -> [Word16]
-addrRange base 0   = []
-addrRange base off = [base, base + direction .. end]
+addrRange _base 0   = []
+addrRange base  off = [base, base + direction .. end]
     where direction = fromIntegral (signum off)
           end = fromIntegral (fromIntegral base + off - 1)
 
