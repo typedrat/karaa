@@ -4,12 +4,12 @@ module Karaa.Hardware.Cartridge.Mappers.MBC1 ( MBC1Cartridge(), makeMBC1Cartridg
 
 import           Control.Applicative                   ( empty )
 import           Control.Monad.Trans.Maybe             ( MaybeT )
-import           Data.Bits
+import Data.Bits                                       ( Bits(..) )
 import qualified Data.ByteString                       as BS
 import           Data.Word                             ( Word8, Word16 )
 
-import           Karaa.Core.Types.Memory               hiding ( romSize, ramSize )
 import           Karaa.Hardware.Cartridge.Header.Types
+import           Karaa.Types.Memory                    hiding ( romSize, ramSize )
 
 data MBC1Cartridge = MBC1Cartridge { mbc1ROM :: !(Banked ROM), mbc1RAM :: Maybe (Banked RAM)
                                    , ramEnabled :: !Bool, romBank :: !Word8

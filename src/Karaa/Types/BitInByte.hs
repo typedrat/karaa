@@ -1,4 +1,4 @@
-module Karaa.Core.Types.BitInByte ( BitInByte( Bit0, Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7 ), bitInByte ) where
+module Karaa.Types.BitInByte ( BitInByte( Bit0, Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7 ), bitInByte ) where
 
 import Control.DeepSeq ( NFData )
 import Prettyprinter   ( Pretty )

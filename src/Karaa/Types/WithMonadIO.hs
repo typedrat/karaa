@@ -1,4 +1,4 @@
-module Karaa.Core.Types.WithMonadIO ( WithMonadIO(..) ) where
+module Karaa.Types.WithMonadIO ( WithMonadIO(..) ) where
 
 import Control.Monad.IO.Class ( MonadIO(..) )
 

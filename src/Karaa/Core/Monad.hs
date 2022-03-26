@@ -9,8 +9,6 @@ import Control.Monad.State.Strict    ( MonadState(..), StateT(..) )
 import Data.Maybe                    ( fromMaybe )
 import Data.Word                     ( Word8, Word16 )
 
-import Karaa.Core.Types.Memory       ( MonadRAM )
-import Karaa.Core.Types.WithMonadIO  ( WithMonadIO(..) )
 import Karaa.CPU.Interrupts.Internal ( HasIRQState(..), MonadInterrupt(..), WithIRQState(..)
                                      , readInterruptRegisters, writeInterruptRegisters
                                      )
@@ -18,12 +16,16 @@ import Karaa.CPU.Interrupts.Internal ( HasIRQState(..), MonadInterrupt(..), With
 import Karaa.CPU.Registers           ( HasRegisterFile(..) )
 import Karaa.CPU.State               ( CPUState, HasCPUState(..) )
 
-import Karaa.Hardware.Cartridge
-import Karaa.Hardware.HighRAM
-import Karaa.Hardware.State
-import Karaa.Hardware.Serial
-import Karaa.Hardware.Timer
-import Karaa.Hardware.WorkRAM
+import Karaa.Hardware.Cartridge      ( HasCartridge(..) )
+import Karaa.Hardware.HighRAM        ( HasHighRAM(..) )
+import Karaa.Hardware.State          ( HardwareState, HasHardwareState(..)
+                                     , readHardware, writeHardware, tickHardware
+                                     )
+import Karaa.Hardware.Serial         ( HasSerialPort(..) )
+import Karaa.Hardware.Timer          ( HasTimer(..) )
+import Karaa.Hardware.WorkRAM        ( HasWorkRAM(..) )
+import Karaa.Types.Memory            ( MonadRAM )
+import Karaa.Types.WithMonadIO       ( WithMonadIO(..) )
 
 
 --

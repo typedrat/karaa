@@ -48,10 +48,7 @@ source-repository head
 library
   import:              language
 
-  exposed-modules:     Karaa.Core.Types.BitInByte
-                     , Karaa.Core.Types.Memory
-                     , Karaa.Core.Types.WithMonadIO
-                     , Karaa.Core.Monad
+  exposed-modules:     Karaa.Core.Monad
                      , Karaa.CPU
                      , Karaa.CPU.Execution
                      , Karaa.CPU.Instructions.Decode
@@ -74,6 +71,9 @@ library
                      , Karaa.Hardware.State
                      , Karaa.Hardware.Timer
                      , Karaa.Hardware.WorkRAM
+                     , Karaa.Types.BitInByte
+                     , Karaa.Types.Memory
+                     , Karaa.Types.WithMonadIO
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
 

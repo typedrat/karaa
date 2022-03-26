@@ -13,9 +13,9 @@ import           Control.Monad.State.Class        ( MonadState )
 import qualified Data.ByteString                  as BS
 import           Data.Word                        ( Word8, Word16 )
 
-import           Karaa.Core.Types.Memory
 import           Karaa.Hardware.Cartridge.Header
 import           Karaa.Hardware.Cartridge.Mappers
+import           Karaa.Types.Memory
 
 data Cartridge = ROMOnlyCartridge !ROMOnlyCartridge
                | MBC1Cartridge    !MBC1Cartridge

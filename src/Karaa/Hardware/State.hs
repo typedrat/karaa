@@ -10,12 +10,12 @@ import Control.Monad.Trans.Maybe ( MaybeT )
 import Data.Word                 ( Word8, Word16 )
 
 import Karaa.CPU.Interrupts      ( MonadInterrupt )
-import Karaa.Core.Types.Memory   ( MonadRAM )
 import Karaa.Hardware.Cartridge
 import Karaa.Hardware.HighRAM
 import Karaa.Hardware.Serial
 import Karaa.Hardware.Timer
 import Karaa.Hardware.WorkRAM
+import Karaa.Types.Memory        ( MonadRAM )
 
 data HardwareState = HardwareState { hwCartridge  :: !Cartridge
                                    , hwHighRAM    :: !HighRAM

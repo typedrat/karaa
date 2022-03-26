@@ -3,7 +3,7 @@ module Karaa.CPU.LoadStore ( loadFlag, loadByte, loadInt, loadLower, loadUpper, 
                            ) where
 
 import Control.Lens.Combinators       ( use, assign )
-import Control.Lens.Operators
+import Control.Lens.Operators         ( (<+=), (<-=), (<<+=), (<<-=) )
 import Data.Bits                      ( Bits(..) )
 import Data.Int                       ( Int8 )
 import Data.Word                      ( Word8, Word16 )

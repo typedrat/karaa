@@ -1,15 +1,15 @@
 {-|
-Module: Karaa.Core.Types.Memory
+Module: Karaa.Types.Memory
 
 Types used to represent emulated ROM, RAM, and banked addressing modes thereof.
 -}
-module Karaa.Core.Types.Memory ( -- * ROM
-                                 ROM(), romSize, romFromByteString, readROM, rawReadROM
-                                 -- * RAM
-                               , RAM(), ramSize, MonadRAM(..)
-                                 -- * Banked memory
-                               , Banked(), bankSize, bankCount, bankedROM, readBankedROM, bankedRAM, readBankedRAM, writeBankedRAM
-                               ) where
+module Karaa.Types.Memory ( -- * ROM
+                            ROM(), romSize, romFromByteString, readROM, rawReadROM
+                            -- * RAM
+                          , RAM(), ramSize, MonadRAM(..)
+                            -- * Banked memory
+                          , Banked(), bankSize, bankCount, bankedROM, readBankedROM, bankedRAM, readBankedRAM, writeBankedRAM
+                          ) where
 
 import           Control.Monad.IO.Class       ( MonadIO(..) )
 import           Control.Monad.Trans          ( MonadTrans(..) )
@@ -21,7 +21,7 @@ import qualified Data.Vector.Storable.Mutable as MV
 import           Data.Word                    ( Word8, Word16 )
 
 import           Karaa.Util.Hex               ( showHex )
-import           Karaa.Core.Types.WithMonadIO ( WithMonadIO(..) )  
+import           Karaa.Types.WithMonadIO      ( WithMonadIO(..) )  
 
 --
 

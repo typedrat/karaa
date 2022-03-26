@@ -3,8 +3,8 @@ module Karaa.Hardware.Cartridge.Mappers.ROMOnly ( ROMOnlyCartridge(), makeROMOnl
 import qualified Data.ByteString                       as BS
 import           Data.Word                             ( Word8, Word16 )
 
-import           Karaa.Core.Types.Memory
 import           Karaa.Hardware.Cartridge.Header.Types
+import           Karaa.Types.Memory
 
 newtype ROMOnlyCartridge = ROMOnlyCartridge ROM
                          deriving (Show)

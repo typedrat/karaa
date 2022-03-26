@@ -16,7 +16,6 @@ import Data.Word                      ( Word8, Word16 )
 import GHC.Stack                      ( HasCallStack )
 
 import Karaa.Core.Monad               ( Karaa, writeAddr, tick )
-import Karaa.Core.Types.BitInByte     ( bitInByte )
 import Karaa.CPU.Interrupts.Internal  ( InterruptStatus(..)
                                       , areInterruptsEnabled
                                       , setInterruptStatus
@@ -34,6 +33,7 @@ import Karaa.CPU.Instructions.Decode  ( decodeCBInstruction )
 import Karaa.CPU.LoadStore            ( loadFlag, loadByte, loadInt, loadLower, loadUpper, loadAddr
                                       , storeFlag, storeByte, storeLower, storeUpper, storeAddr
                                       )
+import Karaa.Types.BitInByte          ( bitInByte )
 import Karaa.Util.ByteLenses          ( upper, lower )
 ```
 

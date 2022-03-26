@@ -9,7 +9,7 @@ import Control.Monad.State.Class ( MonadState )
 import Control.Monad.Trans.Maybe ( MaybeT )
 import Data.Word                 ( Word8, Word16 )
 
-import Karaa.Core.Types.Memory   ( RAM, MonadRAM(..) )
+import Karaa.Types.Memory        ( RAM, MonadRAM(..) )
 
 newtype WorkRAM = DMGWorkRAM RAM
                 deriving (Show)
