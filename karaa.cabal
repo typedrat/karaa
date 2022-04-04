@@ -26,6 +26,7 @@ common language
                      , KindSignatures
                      , LambdaCase
                      , NamedFieldPuns
+                     , NoStarIsType
                      , NumericUnderscores
                      , OverloadedStrings
                      , PatternSynonyms
@@ -74,6 +75,7 @@ library
                      , Karaa.Hardware.WorkRAM
                      , Karaa.Types.BitInByte
                      , Karaa.Types.Memory
+                     , Karaa.Types.RLEStream
                      , Karaa.Types.WithMonadIO
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
@@ -89,7 +91,6 @@ library
                      , prettyprinter ^>= 1.7.1
                      , megaparsec    ^>= 9.2.0
                      , bits-extra    ^>= 0.0.2.0
-                     , dlist         ^>= 1.0
   hs-source-dirs:      src
 
   build-tool-depends:  markdown-unlit:markdown-unlit ^>= 0.5.1
