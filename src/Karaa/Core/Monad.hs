@@ -2,6 +2,7 @@ module Karaa.Core.Monad ( Karaa(..), readAddr, writeAddr, tick, EmulatorState(..
 
 import Control.Applicative           ( Alternative(..) )
 import Control.Lens.Lens             ( lens )
+import Control.Monad                 ( replicateM_ )
 import Control.Monad.Catch           ( MonadThrow, MonadCatch, MonadMask )
 import Control.Monad.IO.Class        ( MonadIO )
 import Control.Monad.Trans.Maybe     ( runMaybeT )
@@ -98,8 +99,4 @@ writeAddr addr byte = do
 
 -- | Advance the hardware simulation by one full φ cycle (4 @CLK@ cycles).
 tick :: Karaa ()
-tick = do 
-    tickHardware
-    tickHardware
-    tickHardware
-    tickHardware
+tick = replicateM_ 4 tickHardware
