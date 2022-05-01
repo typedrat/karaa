@@ -79,10 +79,12 @@ unusedBits = 0b0111_1110
 
 -- | Handle reads from the serial port registers.
 readSerialPortRegisters :: (MonadState s m, HasSerialPort s) => Word16 -> MaybeT m Word8
-readSerialPortRegisters 0xFF01 = do
+readSerialPortRegisters 0xFF01 = {-# SCC readSerialPortRegisters #-}
+                                 do
     SerialPort { serialData } <- use serialPort
     return serialData
-readSerialPortRegisters 0xFF02 = do
+readSerialPortRegisters 0xFF02 = {-# SCC readSerialPortRegisters #-}
+                                 do
     SerialPort { transferInProgress, clockSource } <- use serialPort
 
     let regValue = unusedBits & bitAt 7                  .~ isJust transferInProgress
@@ -95,10 +97,10 @@ readSerialPortRegisters _ = empty
 -- | Handle writes to the serial port registers.
 writeSerialPortRegisters :: (MonadState s m, HasSerialPort s) => Word16 -> Word8 -> m ()
 writeSerialPortRegisters 0xFF01 byte =
-    modifying serialPort $ \st -> 
+    modifying serialPort $ \st -> {-# SCC writeSerialPortRegisters #-}
         st { serialData = byte }
 writeSerialPortRegisters 0xFF02 byte =
-    modifying serialPort $ \st ->
+    modifying serialPort $ \st -> {-# SCC writeSerialPortRegisters #-}
         st { transferInProgress = if byte ^. bitAt 7 then Just 0xFF else Nothing
            , clockSource        = byte ^. bitAt 0 . clockSourceBit
            , currentTicks       = 0
@@ -109,7 +111,8 @@ writeSerialPortRegisters _      _    =
 
 -- | Advance the simulation of the serial port by one M-cycle.
 tickSerialPort :: (MonadState s m, HasSerialPort s, MonadInterrupt m, MonadIO m) => m ()
-tickSerialPort = use serialPort >>= \case
+tickSerialPort = {-# SCC tickSerialPort #-}
+                 use serialPort >>= \case
     -- Are we the master of a transfer in progress?
     port@(SerialPort { transferInProgress = Just inProgress
                      , clockSource = InternalClock

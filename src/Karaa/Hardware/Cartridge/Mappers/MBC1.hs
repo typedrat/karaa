@@ -37,17 +37,20 @@ makeMBC1Cartridge _ _ = Nothing
 
 readMBC1Cartridge :: (MonadRAM m) => MBC1Cartridge -> Word16 -> MaybeT m Word8
 readMBC1Cartridge (MBC1Cartridge { mbc1ROM, romBank, secondaryBank, bankingMode, mbc1Config }) addr 
-    | addr <= 0x3FFF = pure $ case (bankingMode, mbc1Config) of
+    | addr <= 0x3FFF = {-# SCC readMBC1Cartridge #-}
+                       pure $ case (bankingMode, mbc1Config) of
         (AdvancedBanking, LargeROMSmallRAM) -> readBankedROM mbc1ROM (0x20 * fromIntegral secondaryBank) addr
         _                                   -> readBankedROM mbc1ROM 0                                   addr
-    | addr <= 0x7FFF = pure $ case (bankingMode, mbc1Config) of
+    | addr <= 0x7FFF = {-# SCC readMBC1Cartridge #-}
+                       pure $ case (bankingMode, mbc1Config) of
         (AdvancedBanking, SmallROMLargeRAM) -> readBankedROM mbc1ROM (fromIntegral romBank)  (addr - 0x4000)
         _                                   -> readBankedROM mbc1ROM (fromIntegral realBank) (addr - 0x4000)
         where realBank = secondaryBank `shiftL` 5 .|. romBank
 
 readMBC1Cartridge (MBC1Cartridge { mbc1RAM = Just ram, ramEnabled = True, secondaryBank, bankingMode, mbc1Config }) addr 
     | addr >= 0xA000
-    , addr <= 0xBFFF = case (bankingMode, mbc1Config) of
+    , addr <= 0xBFFF = {-# SCC readMBC1Cartridge #-}
+                       case (bankingMode, mbc1Config) of
         (AdvancedBanking, SmallROMLargeRAM) -> readBankedRAM ram (fromIntegral secondaryBank) (addr - 0xA000)
         _                                   -> readBankedRAM ram 0                            (addr - 0xA000)
 
@@ -55,16 +58,21 @@ readMBC1Cartridge _ _ = empty
 
 writeMBC1Cartridge :: (MonadRAM m) => MBC1Cartridge -> Word16 -> Word8 -> m MBC1Cartridge
 writeMBC1Cartridge cart addr byte
-    | addr <= 0x1FFF = pure $ cart { ramEnabled = (byte .&. 0xF) == 0xA }
-    | addr <= 0x3FFF = pure $ cart { romBank = byte .&. 0b0001_1111 }
-    | addr <= 0x5FFF = pure $ cart { secondaryBank = byte .&. 0b0000_0011 }
-    | addr <= 0x7FFF = pure $ if testBit byte 0
+    | addr <= 0x1FFF = {-# SCC writeMBC1Cartridge #-}
+                       pure $ cart { ramEnabled = (byte .&. 0xF) == 0xA }
+    | addr <= 0x3FFF = {-# SCC writeMBC1Cartridge #-}
+                       pure $ cart { romBank = byte .&. 0b0001_1111 }
+    | addr <= 0x5FFF = {-# SCC writeMBC1Cartridge #-}
+                       pure $ cart { secondaryBank = byte .&. 0b0000_0011 }
+    | addr <= 0x7FFF = {-# SCC writeMBC1Cartridge #-}
+                       pure $ if testBit byte 0
                                 then cart { bankingMode = AdvancedBanking }
                                 else cart { bankingMode = SimpleBanking }
 
 writeMBC1Cartridge cart@(MBC1Cartridge { mbc1RAM = Just ram, ramEnabled = True, secondaryBank, bankingMode, mbc1Config }) addr byte
     | addr >= 0xA000
-    , addr <= 0xBFFF = cart <$ case (bankingMode, mbc1Config) of
+    , addr <= 0xBFFF = {-# SCC writeMBC1Cartridge #-}
+                       cart <$ case (bankingMode, mbc1Config) of
         (AdvancedBanking, SmallROMLargeRAM) -> writeBankedRAM ram (fromIntegral secondaryBank) (addr - 0xA000) byte
         _                                   -> writeBankedRAM ram 0                            (addr - 0xA000) byte
 

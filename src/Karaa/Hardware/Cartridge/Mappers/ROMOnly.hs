@@ -22,5 +22,6 @@ makeROMOnlyCartridge _ _ = Nothing
 
 readROMOnlyCartridge :: ROMOnlyCartridge -> Word16 -> MaybeT m Word8
 readROMOnlyCartridge (ROMOnlyCartridge rom) addr
-    | addr <= 0x7FFF = pure (readROM rom addr)
+    | addr <= 0x7FFF = {-# SCC readROMOnlyCartridge #-}
+                       pure (readROM rom addr)
 readROMOnlyCartridge _ _ = empty

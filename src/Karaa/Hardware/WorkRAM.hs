@@ -29,19 +29,23 @@ instance HasWorkRAM WorkRAM where
 readWorkRAM :: (MonadState s m, HasWorkRAM s, MonadRAM m) => Word16 -> MaybeT m Word8
 readWorkRAM addr 
     -- Echo RAM:
-    | addr >= 0xE000, addr <= 0xFDFF = readWorkRAM (addr - 0x2000)
+    | addr >= 0xE000, addr <= 0xFDFF = {-# SCC readWorkRAM #-}
+                                       readWorkRAM (addr - 0x2000)
     -- Directly addressed work RAM.
-    | addr >= 0xC000, addr <= 0xDFFF = use workRAM >>= \case
-        DMGWorkRAM ram -> readRAM ram (addr - 0xC000)
+    | addr >= 0xC000, addr <= 0xDFFF = {-# SCC readWorkRAM #-}
+                                       use workRAM >>=
+        \(DMGWorkRAM ram) -> readRAM ram (addr - 0xC000)
     | otherwise                      = empty
 {-# INLINE readWorkRAM #-}
 
 writeWorkRAM :: (MonadState s m, HasWorkRAM s, MonadRAM m) => Word16 -> Word8 -> m ()
 writeWorkRAM addr byte
     -- Echo RAM:
-    | addr >= 0xE000, addr <= 0xFDFF = writeWorkRAM (addr - 0x2000) byte
+    | addr >= 0xE000, addr <= 0xFDFF = {-# SCC writeWorkRAM #-}
+                                       writeWorkRAM (addr - 0x2000) byte
     -- Directly addressed work RAM.
-    | addr >= 0xC000, addr <= 0xDFFF = use workRAM >>= \case
-        DMGWorkRAM ram -> writeRAM ram (addr - 0xC000) byte
+    | addr >= 0xC000, addr <= 0xDFFF = {-# SCC writeWorkRAM #-}
+                                       use workRAM >>=
+        \(DMGWorkRAM ram) -> writeRAM ram (addr - 0xC000) byte
     | otherwise                      = return ()
 {-# INLINE writeWorkRAM #-}

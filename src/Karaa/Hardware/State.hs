@@ -48,7 +48,8 @@ ioMemoryFallback addr
     | otherwise      = empty
 
 writeHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> Word8 -> m ()
-writeHardware addr byte = {-# SCC "writeHardware" #-} do
+writeHardware addr byte = {-# SCC "writeHardware" #-}
+                          do
     writeWorkRAM addr byte
     writeCartridge addr byte
     writeHighRAM addr byte
@@ -57,7 +58,8 @@ writeHardware addr byte = {-# SCC "writeHardware" #-} do
 {-# INLINE writeHardware #-}
 
 tickHardware :: (MonadState s m, HasHardwareState s, MonadInterrupt m, MonadIO m) => m ()
-tickHardware = {-# SCC "tickHardware" #-} do
+tickHardware = {-# SCC "tickHardware" #-} 
+               do
     tickTimer
     tickSerialPort
     tickCartridge

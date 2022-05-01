@@ -94,9 +94,10 @@ readAddr addr = {-# SCC "readAddr" #-} (
     )
 
 writeAddr :: Word16 -> Word8 -> Karaa ()
-writeAddr addr byte = {-# SCC "writeAddr" #-} do
-    writeInterruptRegisters addr byte
-    writeHardware addr byte
+writeAddr addr byte = {-# SCC "writeAddr" #-}
+    (  writeInterruptRegisters addr byte
+    >> writeHardware addr byte
+    )
 
 -- | Advance the hardware simulation by one full φ cycle (4 @CLK@ cycles).
 tick :: Karaa ()

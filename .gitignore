@@ -8,3 +8,6 @@ roms/*
 !.keep
 .history
 /*.txt
+/palette.map
+/*.svg
+/*.prof

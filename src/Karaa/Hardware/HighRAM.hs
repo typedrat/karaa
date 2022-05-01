@@ -28,14 +28,16 @@ instance HasHighRAM HighRAM where
 
 readHighRAM :: (MonadState s m, HasHighRAM s, MonadRAM m) => Word16 -> MaybeT m Word8
 readHighRAM addr 
-    | addr >= 0xFF80, addr <= 0xFFFE = use highRAM >>= \case
-        HighRAM ram -> readRAM ram (addr - 0xFF80)
+    | addr >= 0xFF80, addr <= 0xFFFE = {-# SCC readHighRAM #-}
+                                       use highRAM >>=
+        \(HighRAM ram) -> readRAM ram (addr - 0xFF80)
     | otherwise                      = empty
 {-# INLINE readHighRAM #-}
 
 writeHighRAM :: (MonadState s m, HasHighRAM s, MonadRAM m) => Word16 -> Word8 -> m ()
 writeHighRAM addr byte
-    | addr >= 0xFF80, addr <= 0xFFFE = use highRAM >>= \case
-        HighRAM ram -> writeRAM ram (addr - 0xFF80) byte
+    | addr >= 0xFF80, addr <= 0xFFFE = {-# SCC writeHighRAM #-}
+                                       use highRAM >>=
+        \(HighRAM ram) -> writeRAM ram (addr - 0xFF80) byte
     | otherwise                      = return ()
 {-# INLINE writeHighRAM #-}

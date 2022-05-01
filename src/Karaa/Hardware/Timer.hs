@@ -117,31 +117,39 @@ regenerateModeStream TimerConfig{..} = go 0
 --
 
 readTimerRegisters :: (MonadState s m, HasTimer s) => Word16 -> MaybeT m Word8
-readTimerRegisters 0xFF04 = uses timer $
+readTimerRegisters 0xFF04 = {-# SCC readTimerRegisters #-}
+                            uses timer $
     \Timer { timerConfig = TimerConfig { systemTimer }, systemTimerDelta } -> (systemTimer + systemTimerDelta) ^. upper
-readTimerRegisters 0xFF05 = uses timer $
+readTimerRegisters 0xFF05 = {-# SCC readTimerRegisters #-}
+                            uses timer $
     \Timer { timerConfig = TimerConfig { userTimer }, userTimerDelta } -> (userTimer + userTimerDelta) ^. lower
-readTimerRegisters 0xFF06 = uses timer $
+readTimerRegisters 0xFF06 = {-# SCC readTimerRegisters #-}
+                            uses timer $
     \Timer { timerConfig = TimerConfig { initialOffset } } -> initialOffset
-readTimerRegisters 0xFF07 = uses timer $
+readTimerRegisters 0xFF07 = {-# SCC readTimerRegisters #-}
+                            uses timer $
     \Timer { timerConfig } -> getTimerControlRegister timerConfig
 readTimerRegisters _      = empty
 {-# INLINE readTimerRegisters #-}
 
 writeTimerRegisters :: (MonadState s m, HasTimer s) => Word16 -> Word8 -> m ()
-writeTimerRegisters 0xFF04 _    = modifying timer $
+writeTimerRegisters 0xFF04 _    = {-# SCC writeTimerRegisters #-}
+                                  modifying timer $
     regenerateTimer (\st -> st { systemTimer = 0 })
-writeTimerRegisters 0xFF05 byte = modifying timer $
+writeTimerRegisters 0xFF05 byte = {-# SCC writeTimerRegisters #-}
+                                  modifying timer $
     regenerateTimer (\st -> st { userTimer = fromIntegral byte })
-writeTimerRegisters 0xFF06 byte = modifying timer $
+writeTimerRegisters 0xFF06 byte = {-# SCC writeTimerRegisters #-}
+                                  modifying timer $
     regenerateTimer (\st -> st { initialOffset = byte })
-writeTimerRegisters 0xFF07 byte = modifying timer $
+writeTimerRegisters 0xFF07 byte = {-# SCC writeTimerRegisters #-}
+                                  modifying timer $
     regenerateTimer (setTimerControlRegister byte)
 writeTimerRegisters _      _    = return ()
 {-# INLINE writeTimerRegisters #-}
 
 tickTimer :: (MonadState s m, HasTimer s, MonadInterrupt m) => m ()
-tickTimer = do
+tickTimer = {-# SCC tickTimer #-} do
     oldTimer@Timer {..} <- use timer
 
     let TimerConfig { userTimer, initialOffset, prescaler, enabled } = timerConfig
