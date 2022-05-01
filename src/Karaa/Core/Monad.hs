@@ -88,15 +88,18 @@ newtype Karaa a = Karaa { runKaraa :: StateT EmulatorState IO a }
                 deriving MonadInterrupt via WithIRQState Karaa
 
 readAddr :: Word16 -> Karaa Word8
-readAddr addr = fmap (fromMaybe 0xAA) . runMaybeT $ 
-        readInterruptRegisters addr
-    <|> readHardware addr
+readAddr addr = {-# SCC "readAddr" #-} (
+                fmap (fromMaybe 0xAA) . runMaybeT $ do
+        ({-# SCC "readInterruptRegisters" #-} readInterruptRegisters addr)
+    <|> ({-# SCC "readHardware"           #-} readHardware addr)
+    )
 
 writeAddr :: Word16 -> Word8 -> Karaa ()
-writeAddr addr byte = do
-    writeInterruptRegisters addr byte
-    writeHardware addr byte
+writeAddr addr byte = {-# SCC "writeAddr" #-} do
+    {-# SCC "writeInterruptRegisters" #-} writeInterruptRegisters addr byte
+    {-# SCC "writeHardware"           #-} writeHardware addr byte
 
 -- | Advance the hardware simulation by one full φ cycle (4 @CLK@ cycles).
 tick :: Karaa ()
-tick = replicateM_ 4 tickHardware
+tick = {-# SCC "tick" #-}
+       replicateM_ 4 tickHardware

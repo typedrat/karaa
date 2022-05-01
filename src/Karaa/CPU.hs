@@ -16,4 +16,6 @@ cpuStep nextOpcode = do
 
     case maybeIRQ of
         Just irq | interruptsEnabled -> serviceInterrupt irq
-        _                            -> execute $ decodeInstruction nextOpcode
+        _                            -> do
+            let decoded = {-# SCC "decodeInstruction" #-} decodeInstruction nextOpcode
+            {-# SCC "execute" #-} execute decoded
