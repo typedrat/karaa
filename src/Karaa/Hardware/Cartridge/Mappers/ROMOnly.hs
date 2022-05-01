@@ -1,9 +1,11 @@
 module Karaa.Hardware.Cartridge.Mappers.ROMOnly ( ROMOnlyCartridge(), makeROMOnlyCartridge, readROMOnlyCartridge ) where
 
+import           Control.Applicative                   ( Alternative(..) )
 import qualified Data.ByteString                       as BS
 import           Data.Word                             ( Word8, Word16 )
 
 import           Karaa.Hardware.Cartridge.Header.Types
+import           Karaa.Types.MaybeT
 import           Karaa.Types.Memory
 
 newtype ROMOnlyCartridge = ROMOnlyCartridge ROM
@@ -18,7 +20,7 @@ makeROMOnlyCartridge (CartridgeHeader { mapperInfo = ROMOnly
                      | BS.length bs == 32768 = Just $ ROMOnlyCartridge (romFromByteString bs)
 makeROMOnlyCartridge _ _ = Nothing
 
-readROMOnlyCartridge :: ROMOnlyCartridge -> Word16 -> Maybe Word8
+readROMOnlyCartridge :: ROMOnlyCartridge -> Word16 -> MaybeT m Word8
 readROMOnlyCartridge (ROMOnlyCartridge rom) addr
-    | addr <= 0x7FFF = Just $ readROM rom addr
-readROMOnlyCartridge _ _ = Nothing
+    | addr <= 0x7FFF = pure (readROM rom addr)
+readROMOnlyCartridge _ _ = empty

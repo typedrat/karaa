@@ -27,7 +27,7 @@ import Control.Applicative       ( empty )
 import Control.Lens.Combinators  ( use, uses, modifying )
 import Control.Lens.Lens         ( Lens' )
 import Control.Monad.State.Class ( MonadState)
-import Control.Monad.Trans.Maybe ( MaybeT )
+import Karaa.Types.MaybeT        ( MaybeT )
 import Data.Bits                 ( (.&.), (.|.), setBit, clearBit, countTrailingZeros )
 import Data.List                 ( intercalate )
 import Data.Word                 ( Word8, Word16 )
@@ -69,10 +69,10 @@ instance HasIRQState IRQState where
 
 -- | Handles reads that may involve the interrupt unit's registers.
 readInterruptRegisters :: (MonadState s m, HasIRQState s) => Word16 -> MaybeT m Word8
-readInterruptRegisters 0xFF0F = do
+readInterruptRegisters 0xFF0F = {-# SCC "readInterruptRegisters" #-} do
     IRQState { irqFlags } <- use irqState
     return irqFlags
-readInterruptRegisters 0xFFFF = do
+readInterruptRegisters 0xFFFF = {-# SCC "readInterruptRegisters" #-} do
     IRQState { irqEnableMask } <- use irqState
     return irqEnableMask
 readInterruptRegisters _ = empty
@@ -80,8 +80,10 @@ readInterruptRegisters _ = empty
 
 -- | Handles writes that may involve the interrupt unit's registers.
 writeInterruptRegisters :: (MonadState s m, HasIRQState s) => Word16 -> Word8 -> m ()
-writeInterruptRegisters 0xFF0F flags      = modifying irqState (\st -> st { irqFlags      = flags      .|. 0b1110_0000 })
-writeInterruptRegisters 0xFFFF enableMask = modifying irqState (\st -> st { irqEnableMask = enableMask .|. 0b1110_0000 })
+writeInterruptRegisters 0xFF0F flags      = {-# SCC "writeInterruptRegisters" #-}
+                                            (modifying irqState (\st -> st { irqFlags      = flags      .|. 0b1110_0000 }))
+writeInterruptRegisters 0xFFFF enableMask = {-# SCC "writeInterruptRegisters" #-}
+                                            (modifying irqState (\st -> st { irqEnableMask = enableMask .|. 0b1110_0000 }))
 writeInterruptRegisters _      _          = return ()
 {-# INLINE writeInterruptRegisters #-}
 

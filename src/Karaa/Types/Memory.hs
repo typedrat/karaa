@@ -13,7 +13,7 @@ module Karaa.Types.Memory ( -- * ROM
 
 import           Control.Monad.IO.Class       ( MonadIO(..) )
 import           Control.Monad.Trans          ( MonadTrans(..) )
-import           Control.Monad.Trans.Maybe    ( MaybeT )
+import           Karaa.Types.MaybeT           ( MaybeT )
 import qualified Data.ByteString              as BS
 import qualified Data.ByteString.Internal     as BSI
 import qualified Data.Vector.Storable         as V

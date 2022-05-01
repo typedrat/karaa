@@ -8,7 +8,7 @@ module Karaa.Hardware.Cartridge ( Cartridge(), HasCartridge(..)
 
 import           Control.Lens.Combinators         ( use, assign )
 import           Control.Lens.Lens                ( Lens' )
-import           Control.Monad.Trans.Maybe        ( MaybeT(..) )
+import           Karaa.Types.MaybeT               ( MaybeT(..) )
 import           Control.Monad.State.Class        ( MonadState )
 import qualified Data.ByteString                  as BS
 import           Data.Word                        ( Word8, Word16 )
@@ -32,7 +32,7 @@ instance HasCartridge Cartridge where
 
 readCartridge :: (MonadState s m, HasCartridge s, MonadRAM m) => Word16 -> MaybeT m Word8
 readCartridge addr = use cartridge >>= \case
-    ROMOnlyCartridge roc  -> hoistMaybe $ readROMOnlyCartridge roc addr
+    ROMOnlyCartridge roc  -> readROMOnlyCartridge roc addr
     MBC1Cartridge    mbc1 -> readMBC1Cartridge mbc1 addr 
 {-# INLINE readCartridge #-}
 
@@ -65,9 +65,6 @@ loadCartridgeFromByteString rom mRAM = do
         ROMOnly  -> maybeToEither UnsupportedMapperConfiguration $ ROMOnlyCartridge <$> makeROMOnlyCartridge header rom
         MBC1 _ _ -> maybeToEither UnsupportedMapperConfiguration $ MBC1Cartridge    <$> makeMBC1Cartridge header rom 
         _       -> Left UnsupportedMapper
-
-hoistMaybe :: (Applicative m) => Maybe a -> MaybeT m a
-hoistMaybe = MaybeT . pure
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither l Nothing  = Left l

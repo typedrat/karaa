@@ -3,7 +3,7 @@ module Karaa.Hardware.Cartridge.Mappers.MBC1 ( MBC1Cartridge(), makeMBC1Cartridg
                                              ) where
 
 import           Control.Applicative                   ( empty )
-import           Control.Monad.Trans.Maybe             ( MaybeT )
+import           Karaa.Types.MaybeT                    ( MaybeT )
 import Data.Bits                                       ( Bits(..) )
 import qualified Data.ByteString                       as BS
 import           Data.Word                             ( Word8, Word16 )

@@ -6,7 +6,7 @@ import Control.Applicative       ( empty )
 import Control.Lens.Combinators  ( use )
 import Control.Lens.Lens         ( Lens' )
 import Control.Monad.State.Class ( MonadState )
-import Control.Monad.Trans.Maybe ( MaybeT )
+import Karaa.Types.MaybeT        ( MaybeT )
 import Data.Word                 ( Word8, Word16 )
 
 import Karaa.Types.Memory        ( RAM, MonadRAM(..) )

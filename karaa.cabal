@@ -20,11 +20,13 @@ common language
                      , BinaryLiterals
                      , DataKinds
                      , DerivingVia
+                     , FlexibleInstances
                      , GADTs
                      , GeneralizedNewtypeDeriving
                      , InstanceSigs
                      , KindSignatures
                      , LambdaCase
+                     , MultiParamTypeClasses
                      , NamedFieldPuns
                      , NoStarIsType
                      , NumericUnderscores
@@ -74,6 +76,7 @@ library
                      , Karaa.Hardware.Timer
                      , Karaa.Hardware.WorkRAM
                      , Karaa.Types.BitInByte
+                     , Karaa.Types.MaybeT
                      , Karaa.Types.Memory
                      , Karaa.Types.RLEStream
                      , Karaa.Types.WithMonadIO

@@ -6,7 +6,7 @@ import Control.Applicative       ( Alternative(..) )
 import Control.Lens.Lens         ( Lens', lens )
 import Control.Monad.IO.Class    ( MonadIO )
 import Control.Monad.State.Class ( MonadState )
-import Control.Monad.Trans.Maybe ( MaybeT )
+import Karaa.Types.MaybeT        ( MaybeT )
 import Data.Word                 ( Word8, Word16 )
 
 import Karaa.CPU.Interrupts      ( MonadInterrupt )
@@ -29,22 +29,26 @@ class (HasCartridge s, HasHighRAM s, HasSerialPort s, HasTimer s, HasWorkRAM s) 
     hardwareState :: Lens' s HardwareState
 
 readHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> MaybeT m Word8 
-readHardware addr = readWorkRAM addr
+readHardware addr = {-# SCC "readHardware" #-} 
+                (   readWorkRAM addr
                 <|> readCartridge addr
                 <|> readHighRAM addr
                 <|> readSerialPortRegisters addr
                 <|> readTimerRegisters addr
                 <|> ioMemoryFallback addr
+                )
 {-# INLINE readHardware #-}
 
 ioMemoryFallback :: (Monad m) => Word16 -> MaybeT m Word8
 ioMemoryFallback 0xFF44 = pure 0x90
+ioMemoryFallback 0xFF0F = empty
+ioMemoryFallback 0xFFFF = empty
 ioMemoryFallback addr
     | addr >= 0xFF00 = pure 0xFF
     | otherwise      = empty
 
 writeHardware :: (MonadState s m, HasHardwareState s, MonadRAM m) => Word16 -> Word8 -> m ()
-writeHardware addr byte = do
+writeHardware addr byte = {-# SCC "writeHardware" #-} do
     writeWorkRAM addr byte
     writeCartridge addr byte
     writeHighRAM addr byte
@@ -53,7 +57,7 @@ writeHardware addr byte = do
 {-# INLINE writeHardware #-}
 
 tickHardware :: (MonadState s m, HasHardwareState s, MonadInterrupt m, MonadIO m) => m ()
-tickHardware = do
+tickHardware = {-# SCC "tickHardware" #-} do
     tickTimer
     tickSerialPort
     tickCartridge

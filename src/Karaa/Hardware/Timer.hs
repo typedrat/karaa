@@ -5,7 +5,7 @@ import           Control.Lens.Lens         ( Lens' )
 import           Control.Lens.Combinators  ( modifying, use, uses )
 import           Control.Lens.Operators    ( (^.), (.=) )
 import           Control.Monad.State.Class ( MonadState )
-import           Control.Monad.Trans.Maybe ( MaybeT )
+import           Karaa.Types.MaybeT        ( MaybeT )
 import           Data.Bits                 ( Bits(..) )
 import           Data.Word                 ( Word8, Word16 )
 

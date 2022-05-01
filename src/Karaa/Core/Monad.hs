@@ -5,9 +5,8 @@ import Control.Lens.Lens             ( lens )
 import Control.Monad                 ( replicateM_ )
 import Control.Monad.Catch           ( MonadThrow, MonadCatch, MonadMask )
 import Control.Monad.IO.Class        ( MonadIO )
-import Control.Monad.Trans.Maybe     ( runMaybeT )
+import Karaa.Types.MaybeT            ( fromMaybeT )
 import Control.Monad.State.Strict    ( MonadState(..), StateT(..) )
-import Data.Maybe                    ( fromMaybe )
 import Data.Word                     ( Word8, Word16 )
 
 import Karaa.CPU.Interrupts.Internal ( HasIRQState(..), MonadInterrupt(..), WithIRQState(..)
@@ -89,15 +88,15 @@ newtype Karaa a = Karaa { runKaraa :: StateT EmulatorState IO a }
 
 readAddr :: Word16 -> Karaa Word8
 readAddr addr = {-# SCC "readAddr" #-} (
-                fmap (fromMaybe 0xAA) . runMaybeT $ do
-        ({-# SCC "readInterruptRegisters" #-} readInterruptRegisters addr)
-    <|> ({-# SCC "readHardware"           #-} readHardware addr)
+                fromMaybeT 0xAA $
+        readHardware addr
+    <|> readInterruptRegisters addr
     )
 
 writeAddr :: Word16 -> Word8 -> Karaa ()
 writeAddr addr byte = {-# SCC "writeAddr" #-} do
-    {-# SCC "writeInterruptRegisters" #-} writeInterruptRegisters addr byte
-    {-# SCC "writeHardware"           #-} writeHardware addr byte
+    writeInterruptRegisters addr byte
+    writeHardware addr byte
 
 -- | Advance the hardware simulation by one full φ cycle (4 @CLK@ cycles).
 tick :: Karaa ()
