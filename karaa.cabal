@@ -79,7 +79,6 @@ library
                      , Karaa.Types.MaybeT
                      , Karaa.Types.Memory
                      , Karaa.Types.RLEStream
-                     , Karaa.Types.WithMonadIO
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
 

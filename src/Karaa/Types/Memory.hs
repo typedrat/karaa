@@ -11,9 +11,8 @@ module Karaa.Types.Memory ( -- * ROM
                           , Banked(), bankSize, bankCount, bankedROM, readBankedROM, bankedRAM, readBankedRAM, writeBankedRAM
                           ) where
 
-import           Control.Monad.IO.Class       ( MonadIO(..) )
 import           Control.Monad.Trans          ( MonadTrans(..) )
-import           Karaa.Types.MaybeT           ( MaybeT )
+import           Control.Monad.State.Strict   ( StateT(..) )
 import qualified Data.ByteString              as BS
 import qualified Data.ByteString.Internal     as BSI
 import qualified Data.Vector.Storable         as V
@@ -21,7 +20,7 @@ import qualified Data.Vector.Storable.Mutable as MV
 import           Data.Word                    ( Word8, Word16 )
 
 import           Karaa.Util.Hex               ( showHex )
-import           Karaa.Types.WithMonadIO      ( WithMonadIO(..) )  
+import           Karaa.Types.MaybeT           ( MaybeT )
 
 --
 
@@ -77,23 +76,37 @@ class (Monad m) => MonadRAM m where
     --   bounds checking.
     rawWriteRAM :: RAM -> Int -> Word8 -> m ()
 
-instance (MonadIO m) => MonadRAM (WithMonadIO m) where
-    newRAM = liftIO . fmap RAM . MV.new
+instance MonadRAM IO where
+    newRAM = fmap RAM . MV.new
     {-# INLINE newRAM #-}
 
-    readRAM (RAM v) addr = liftIO $ MV.read v (fromIntegral addr)
+    readRAM (RAM v) addr = MV.read v (fromIntegral addr)
     {-# INLINE readRAM #-}
 
-    writeRAM (RAM v) addr byte = liftIO $ MV.write v (fromIntegral addr) byte 
+    writeRAM (RAM v) addr byte = MV.write v (fromIntegral addr) byte 
     {-# INLINE writeRAM #-}
 
-    rawReadRAM (RAM v) addr = liftIO $ MV.unsafeRead v addr  
+    rawReadRAM (RAM v) addr = MV.unsafeRead v addr  
     {-# INLINE rawReadRAM#-}
     
-    rawWriteRAM (RAM v) addr byte = liftIO $ MV.unsafeWrite v addr byte
+    rawWriteRAM (RAM v) addr byte = MV.unsafeWrite v addr byte
     {-# INLINE rawWriteRAM #-}
 
-deriving via WithMonadIO IO instance MonadRAM IO
+instance (MonadRAM m) => MonadRAM (StateT s m) where
+    newRAM size = lift $ newRAM size
+    {-# INLINE newRAM #-}
+
+    readRAM ram addr = lift $ readRAM ram addr
+    {-# INLINE readRAM #-}
+
+    writeRAM ram addr byte = lift $ writeRAM ram addr byte 
+    {-# INLINE writeRAM #-}
+
+    rawReadRAM ram addr = lift $ rawReadRAM ram addr  
+    {-# INLINE rawReadRAM#-}
+    
+    rawWriteRAM ram addr byte = lift $ rawWriteRAM ram addr byte
+    {-# INLINE rawWriteRAM #-}
 
 instance (MonadRAM m) => MonadRAM (MaybeT m) where
     newRAM size = lift $ newRAM size

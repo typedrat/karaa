@@ -25,7 +25,6 @@ import Karaa.Hardware.Serial         ( HasSerialPort(..) )
 import Karaa.Hardware.Timer          ( HasTimer(..) )
 import Karaa.Hardware.WorkRAM        ( HasWorkRAM(..) )
 import Karaa.Types.Memory            ( MonadRAM )
-import Karaa.Types.WithMonadIO       ( WithMonadIO(..) )
 
 
 --
@@ -80,10 +79,10 @@ instance HasHardwareState EmulatorState where
 newtype Karaa a = Karaa { runKaraa :: StateT EmulatorState IO a }
                 deriving newtype ( Functor, Applicative, Monad
                                  , MonadState EmulatorState
+                                 , MonadRAM
                                  , MonadIO
                                  , MonadThrow, MonadCatch, MonadMask
                                  )
-                deriving MonadRAM via WithMonadIO Karaa
                 deriving MonadInterrupt via WithIRQState Karaa
 
 readAddr :: Word16 -> Karaa Word8
