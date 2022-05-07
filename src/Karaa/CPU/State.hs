@@ -6,8 +6,8 @@ import Karaa.CPU.Registers  ( RegisterFile, makeRegisterFile, HasRegisterFile(..
 import Karaa.CPU.Interrupts ( IRQState, initialIRQState, HasIRQState(..) )
 
 -- | @CPUState@ contains each of the component state types required for the CPU to operate.
-data CPUState = CPUState { cpuRegisterFile :: !RegisterFile
-                         , cpuIRQState     :: !IRQState
+data CPUState = CPUState { cpuRegisterFile :: {-# UNPACK #-} !RegisterFile
+                         , cpuIRQState     :: {-# UNPACK #-} !IRQState
                          }
               deriving (Show)
 
