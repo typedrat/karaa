@@ -5,12 +5,12 @@ The outside-facing interface of the interrupt unit. This should contain everythi
 -}
 module Karaa.CPU.Interrupts ( -- * Throwing interrupts
                               Interrupt(..)
-                            , MonadInterrupt(..)
-                            , WithIRQState(..)
+                            , MonadInterrupt()
+                            , triggerInterrupt
                               -- * @IRQState@
                             , IRQState()
+                            , makeIRQState
                             , initialIRQState
-                            , HasIRQState(..)
                             ) where
 
 import Karaa.CPU.Interrupts.Internal

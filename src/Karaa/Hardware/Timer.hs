@@ -1,180 +1,109 @@
-module Karaa.Hardware.Timer ( Timer(), initialTimerState, HasTimer(..), readTimerRegisters, writeTimerRegisters, tickTimer ) where
+module Karaa.Hardware.Timer where
 
 import           Control.Applicative       ( empty )
-import           Control.Lens.Lens         ( Lens' )
-import           Control.Lens.Combinators  ( modifying, use, uses )
-import           Control.Lens.Operators    ( (^.), (.=) )
-import           Control.Monad.State.Class ( MonadState )
-import           Karaa.Types.MaybeT        ( MaybeT )
+import           Control.Monad             ( forever )
 import           Data.Bits                 ( Bits(..) )
 import           Data.Word                 ( Word8, Word16 )
+import           Torsor                    ( difference )
 
-import           Karaa.CPU.Interrupts      ( MonadInterrupt(..), Interrupt( TimerInterrupt ) )
-import           Karaa.Types.RLEStream     ( RLEStream(..) )
-import qualified Karaa.Types.RLEStream     as RLE
-import           Karaa.Util.ByteLenses     ( upper, lower )
+import           Karaa.Core.Monad.Base     ( MonadEmulatorBase(..) )
+import           Karaa.CPU.Interrupts      ( triggerInterrupt, Interrupt( TimerInterrupt ) )
+import           Karaa.Types.Ticks         ( Ticks, zeroTicks, DeltaT(..) )
+import           Karaa.Types.Hardware      ( Hardware(..), HardwareStatus(..) )
+import           Karaa.Types.Scheduled     ( statefulYield )
 
 --
 
-data TimerMode = NormalOperation
-               | InterruptPending
-               | InterruptTriggered
-               | ReloadingTIMA
-               deriving (Show, Eq)
-
-data TimerConfig = TimerConfig { systemTimer      :: !Word16
-                               , userTimer        :: !Word16
-                               , initialOffset    :: !Word8
-                               , prescaler        :: !TimerPrescaler
-                               , enabled          :: !Bool
-                               }
-                 deriving (Show)
-
-data Timer = Timer { timerConfig      :: TimerConfig
-                   , modeStream       :: RLEStream TimerMode
-                   , systemTimerDelta :: !Word16
-                   , userTimerDelta   :: !Word16
+data Timer = Timer { systemTimer   :: !Word16
+                   , userTimer     :: !Word16
+                   , initialOffset :: !Word8
+                   , prescaler     :: !TimerPrescaler
+                   , enabled       :: !Bool
+                   , lastUpdated   :: !Ticks
                    }
-                   deriving (Show)
+           deriving (Show)
 
 initialTimerState :: Timer
-initialTimerState = Timer { timerConfig
-                          , modeStream       = RLE.singleton NormalOperation
-                          , systemTimerDelta = 0
-                          , userTimerDelta   = 0
+initialTimerState = Timer { systemTimer   = 0
+                          , userTimer     = 0
+                          , initialOffset = 0
+                          , prescaler     = Prescaler1024
+                          , enabled       = False
+                          , lastUpdated   = zeroTicks
                           }
-    where
-        timerConfig = TimerConfig { systemTimer   = 0
-                                  , userTimer     = 0
-                                  , initialOffset = 0
-                                  , prescaler     = Prescaler1024
-                                  , enabled       = False
-                                  }
 
-class HasTimer s where
-    timer :: Lens' s Timer
+instance Hardware Timer where
+    readHardware timer 0xFF04 =
+        withUpdatedTimer timer $ fromIntegral . flip shiftR 8 . systemTimer
+    readHardware timer 0xFF05 =
+        withUpdatedTimer timer $ fromIntegral . userTimer
+    readHardware timer 0xFF06 =
+        return $ initialOffset timer
+    readHardware timer 0xFF07 =
+        return $ getTimerControlRegister timer
+    readHardware _ _ =
+        empty
 
-instance HasTimer Timer where
-    timer = id
-    {-# INLINE timer #-}
+    writeHardware timer 0xFF04 _    = withUpdatedTimer timer $ \t ->
+        let t' = t { systemTimer = 0 }
+        in (t', Just $ timerStatus t')
+    writeHardware timer 0xFF05 byte = withUpdatedTimer timer $ \t ->
+        let t' = t { userTimer = fromIntegral byte }
+        in (t', Just $ timerStatus t')
+    writeHardware timer 0xFF06 byte = withUpdatedTimer timer $ \t ->
+        let t' = t { initialOffset = byte }
+        in (t', Nothing)
+    writeHardware timer 0xFF07 byte = withUpdatedTimer timer $ \t ->
+        let t' = setTimerControlRegister byte t
+        in (t', Just $ timerStatus t')
+    writeHardware timer _ _ =
+        return (timer, Nothing)
 
-regenerateTimer :: (TimerConfig -> TimerConfig) -> Timer -> Timer
-regenerateTimer f Timer{..} = newTimer
-    where
-        newTimer = Timer { timerConfig      = timerConfig'' { systemTimer = newSystemTimer' }
-                         , modeStream       = regenerateModeStream timerConfig'' modeStream
-                         , systemTimerDelta = newSystemTimerDelta
-                         , userTimerDelta   = 0
-                         }
-
-        modulusBitmask = prescalerModulusBitmask newPrescaler
-        newSystemTimer'     = newSystemTimer .&. complement modulusBitmask
-        newSystemTimerDelta = newSystemTimer .&. modulusBitmask
-        newUserTimerDelta | oldPrescalerBit && not newPrescalerBit = 1
-                          | otherwise                              = 0
-
-        timerConfig'' = timerConfig' { userTimer = newUserTimer + newUserTimerDelta }
-        timerConfig' = f (timerConfig { systemTimer = oldSystemTimer + systemTimerDelta
-                                      , userTimer   = oldUserTimer   + userTimerDelta
-                                      })
+    emulateHardware = forever $ do
+        statefulYield $ \timer@Timer { initialOffset } -> do
+            let timer' = timer { userTimer = fromIntegral initialOffset }
+            return (timerStatus timer', timer')
         
-        TimerConfig { systemTimer = oldSystemTimer
-                    , userTimer   = oldUserTimer
-                    , prescaler   = oldPrescaler
-                    } = timerConfig
-        oldPrescalerBit = checkPrescalerBit (oldSystemTimer + systemTimerDelta) oldPrescaler
-        TimerConfig { systemTimer = newSystemTimer
-                    , userTimer   = newUserTimer
-                    , prescaler   = newPrescaler
-                    } = timerConfig'
-        newPrescalerBit = checkPrescalerBit newSystemTimer newPrescaler
-
-regenerateModeStream :: TimerConfig -> RLEStream TimerMode -> RLEStream TimerMode
-regenerateModeStream TimerConfig{..} = go 0
-    where
-        go :: Word16 -> RLEStream TimerMode -> RLEStream TimerMode
-        go n (StreamCons NormalOperation _) = go' n
-        go n (StreamCons mode xs)           = StreamCons mode (go (n + 1) xs)
-
-        go' :: Word16 -> RLEStream TimerMode
-        go' _ | not enabled = RLE.singleton NormalOperation
-        go' n = UnsafeRLECons NormalOperation (untilFirstUserTick + ticksUntilNextInterrupt * period) futureModes
-            where
-                realSystemTimer = systemTimer + n
-                untilFirstUserTick = fromIntegral $ prescalerPeriod prescaler - (realSystemTimer .&. prescalerModulusBitmask prescaler)
-
-                ticksUntilNextInterrupt = 0xFF - fromIntegral userTimer
-                period = fromIntegral $ prescalerPeriod prescaler
-
-                ticksUntilFutureInterrupt = 0x100 - fromIntegral initialOffset
-                futureModes = UnsafeRLECons InterruptPending 3
-                            ( UnsafeUnitCons InterruptTriggered
-                            ( UnsafeRLECons ReloadingTIMA 4
-                            ( UnsafeRLECons NormalOperation (ticksUntilFutureInterrupt * period)
-                              futureModes
-                            )))
-
---
-
-readTimerRegisters :: (MonadState s m, HasTimer s) => Word16 -> MaybeT m Word8
-readTimerRegisters 0xFF04 = {-# SCC readTimerRegisters #-}
-                            uses timer $
-    \Timer { timerConfig = TimerConfig { systemTimer }, systemTimerDelta } -> (systemTimer + systemTimerDelta) ^. upper
-readTimerRegisters 0xFF05 = {-# SCC readTimerRegisters #-}
-                            uses timer $
-    \Timer { timerConfig = TimerConfig { userTimer }, userTimerDelta } -> (userTimer + userTimerDelta) ^. lower
-readTimerRegisters 0xFF06 = {-# SCC readTimerRegisters #-}
-                            uses timer $
-    \Timer { timerConfig = TimerConfig { initialOffset } } -> initialOffset
-readTimerRegisters 0xFF07 = {-# SCC readTimerRegisters #-}
-                            uses timer $
-    \Timer { timerConfig } -> getTimerControlRegister timerConfig
-readTimerRegisters _      = empty
-{-# INLINE readTimerRegisters #-}
-
-writeTimerRegisters :: (MonadState s m, HasTimer s) => Word16 -> Word8 -> m ()
-writeTimerRegisters 0xFF04 _    = {-# SCC writeTimerRegisters #-}
-                                  modifying timer $
-    regenerateTimer (\st -> st { systemTimer = 0 })
-writeTimerRegisters 0xFF05 byte = {-# SCC writeTimerRegisters #-}
-                                  modifying timer $
-    regenerateTimer (\st -> st { userTimer = fromIntegral byte })
-writeTimerRegisters 0xFF06 byte = {-# SCC writeTimerRegisters #-}
-                                  modifying timer $
-    regenerateTimer (\st -> st { initialOffset = byte })
-writeTimerRegisters 0xFF07 byte = {-# SCC writeTimerRegisters #-}
-                                  modifying timer $
-    regenerateTimer (setTimerControlRegister byte)
-writeTimerRegisters _      _    = return ()
-{-# INLINE writeTimerRegisters #-}
-
-tickTimer :: (MonadState s m, HasTimer s, MonadInterrupt m) => m ()
-tickTimer = {-# SCC tickTimer #-} do
-    oldTimer@Timer {..} <- use timer
-
-    let TimerConfig { userTimer, initialOffset, prescaler, enabled } = timerConfig
-        StreamCons currentMode futureModes = modeStream
-        systemTimerDelta' = systemTimerDelta + 1
-        shouldIncrementUser = systemTimerDelta' .&. prescalerModulusBitmask prescaler == 0
-        userTimerDelta'
-            | enabled && shouldIncrementUser = userTimerDelta + 1
-            | otherwise                      = userTimerDelta
-        newTimer = oldTimer { modeStream = futureModes
-                            , systemTimerDelta = systemTimerDelta'
-                            , userTimerDelta = userTimerDelta'
-                            }
-    
-    case currentMode of
-        InterruptTriggered | userTimer + userTimerDelta' > 0xFF -> do
+        statefulYield $ \timer -> do
+            ticks <- getClock 
+            let timer' = updateTimer timer ticks
+            return (Enabled 4, timer')
+        
+        statefulYield $ \timer -> do
             triggerInterrupt TimerInterrupt
-            timer .= newTimer
-        ReloadingTIMA ->
-            timer .= newTimer { timerConfig = timerConfig { userTimer = fromIntegral initialOffset }
-                              , userTimerDelta = 0
-                              }
-        _ ->
-            timer .= newTimer
-{-# INLINE tickTimer #-}
+            return (Enabled 4, timer)
+
+withUpdatedTimer ::(MonadEmulatorBase m) => Timer -> (Timer -> a) -> m a
+withUpdatedTimer timer f = f . updateTimer timer <$> getClock
+
+updateTimer :: Timer -> Ticks -> Timer
+updateTimer timer@Timer{..} ticks
+    | enabled = enabledTimer
+    | otherwise = disabledTimer
+    where
+        wideSystemTimer = fromIntegral systemTimer
+        wideSystemTimer' = wideSystemTimer + rawDeltaT deltaT
+        disabledTimer = timer { systemTimer = fromIntegral wideSystemTimer', lastUpdated = ticks }
+
+        wideUserTimer = fromIntegral userTimer
+        wideUserTimer' = wideUserTimer + rawDeltaT (deltaT `div` prescalerPeriod prescaler)
+        enabledTimer = disabledTimer { systemTimer = fromIntegral wideUserTimer' }
+
+        deltaT = difference ticks lastUpdated
+
+timerStatus :: Timer -> HardwareStatus
+timerStatus Timer { enabled = True, .. } = Enabled systemTicksToNextEvent
+    where
+        nextUserTickAt = nextMultipleOf prescaler systemTimer
+        systemTicksToNextUserTick = nextUserTickAt - systemTimer
+        userTicksToNextEvent = 0xFF - userTimer
+        systemTicksToNextEvent = fromIntegral systemTicksToNextUserTick 
+                               + prescalerPeriod prescaler * fromIntegral userTicksToNextEvent
+timerStatus Timer { enabled = False } = Disabled
+
+nextMultipleOf :: TimerPrescaler -> Word16 -> Word16
+nextMultipleOf prescaler value = (value + prescalerModulusBitmask prescaler)
+                             .&. complement (prescalerModulusBitmask prescaler)
 
 --
 
@@ -196,7 +125,7 @@ prescalerModulusBitmask Prescaler16   = 0b0000_0000_0000_1111
 prescalerModulusBitmask Prescaler64   = 0b0000_0000_0011_1111
 prescalerModulusBitmask Prescaler256  = 0b0000_0000_1111_1111
 
-prescalerPeriod :: TimerPrescaler -> Word16
+prescalerPeriod :: TimerPrescaler -> DeltaT
 prescalerPeriod Prescaler1024 = 1024
 prescalerPeriod Prescaler16   = 16
 prescalerPeriod Prescaler64   = 64
@@ -230,8 +159,8 @@ selectEnableBit = flip testBit 2
 
 --
 
-getTimerControlRegister :: TimerConfig -> Word8
-getTimerControlRegister TimerConfig{..} = 0b1111_1000 .|. getEnableBit enabled .|. getPrescalerConfigBitmask prescaler
+getTimerControlRegister :: Timer -> Word8
+getTimerControlRegister Timer{..} = 0b1111_1000 .|. getEnableBit enabled .|. getPrescalerConfigBitmask prescaler
 
-setTimerControlRegister :: Word8 -> TimerConfig -> TimerConfig
+setTimerControlRegister :: Word8 -> Timer -> Timer
 setTimerControlRegister byte st = st { prescaler = selectPrescalerBit byte, enabled = selectEnableBit byte }

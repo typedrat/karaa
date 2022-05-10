@@ -8,7 +8,7 @@ newtype MaybeT m a = MaybeT { unMaybeT :: forall b. (a -> m b) -> m b -> m b }
 
 runMaybeT :: Monad m => MaybeT m a -> m (Maybe a)
 runMaybeT m = unMaybeT m
-    (\x -> return (Just x))
+    (return . Just)
     (return Nothing)
 
 fromMaybeT :: Monad m => a -> MaybeT m a -> m a
@@ -18,7 +18,7 @@ fromMaybeT def m = unMaybeT m
 
 instance Functor (MaybeT m) where
     fmap f (MaybeT cont) = MaybeT $ \just nothing ->
-        cont (\x -> just (f x)) nothing
+        cont (just . f) nothing
     {-# INLINE fmap #-}
 
 instance Applicative (MaybeT m) where
@@ -27,7 +27,7 @@ instance Applicative (MaybeT m) where
     {-# INLINE pure #-}
 
     (MaybeT contF) <*> (MaybeT contX) = MaybeT $ \just nothing ->
-        contF (\f -> contX (\x -> just (f x)) nothing) nothing
+        contF (\f -> contX (just . f) nothing) nothing
     {-# INLINE (<*>) #-}
 
 instance Alternative (MaybeT m) where

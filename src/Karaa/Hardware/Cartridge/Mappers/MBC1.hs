@@ -24,19 +24,20 @@ data BankingMode = SimpleBanking | AdvancedBanking
 data MBC1Configuration = SmallROMSmallRAM | SmallROMLargeRAM | LargeROMSmallRAM
                        deriving (Show)
 
-makeMBC1Cartridge :: CartridgeHeader -> BS.ByteString -> Maybe MBC1Cartridge
-makeMBC1Cartridge (CartridgeHeader { mapperInfo = MBC1 WithoutRAM WithoutBattery
-                                   , cartridgeROMSize = romSize
-                                   , cartridgeRAMSize = 0
-                                   })
-                  bs
-                  | BS.length bs == romSize = Just $ MBC1Cartridge rom Nothing False 1 0 SimpleBanking config
-                  where rom = bankedROM (romFromByteString bs) 0x4000
+makeMBC1Cartridge :: CartridgeHeader -> BS.ByteString -> Maybe BS.ByteString -> Maybe MBC1Cartridge
+makeMBC1Cartridge CartridgeHeader { mapperInfo = MBC1 WithoutRAM WithoutBattery
+                                  , cartridgeROMSize = romSize
+                                  , cartridgeRAMSize = 0
+                                  }
+                  romBS
+                  Nothing
+                  | BS.length romBS == romSize = Just $ MBC1Cartridge rom Nothing False 1 0 SimpleBanking config
+                  where rom = bankedROM (romFromByteString romBS) 0x4000
                         config = if romSize < 1024 * 1024 then SmallROMSmallRAM else LargeROMSmallRAM
-makeMBC1Cartridge _ _ = Nothing
+makeMBC1Cartridge _ _ _ = Nothing
 
 readMBC1Cartridge :: (MonadRAM m) => MBC1Cartridge -> Word16 -> MaybeT m Word8
-readMBC1Cartridge (MBC1Cartridge { mbc1ROM, romBank, secondaryBank, bankingMode, mbc1Config }) addr 
+readMBC1Cartridge MBC1Cartridge { mbc1ROM, romBank, secondaryBank, bankingMode, mbc1Config } addr 
     | addr <= 0x3FFF = {-# SCC readMBC1Cartridge #-}
                        pure $ case (bankingMode, mbc1Config) of
         (AdvancedBanking, LargeROMSmallRAM) -> readBankedROM mbc1ROM (0x20 * fromIntegral secondaryBank) addr
@@ -47,7 +48,7 @@ readMBC1Cartridge (MBC1Cartridge { mbc1ROM, romBank, secondaryBank, bankingMode,
         _                                   -> readBankedROM mbc1ROM (fromIntegral realBank) (addr - 0x4000)
         where realBank = secondaryBank `shiftL` 5 .|. romBank
 
-readMBC1Cartridge (MBC1Cartridge { mbc1RAM = Just ram, ramEnabled = True, secondaryBank, bankingMode, mbc1Config }) addr 
+readMBC1Cartridge MBC1Cartridge { mbc1RAM = Just ram, ramEnabled = True, secondaryBank, bankingMode, mbc1Config } addr 
     | addr >= 0xA000
     , addr <= 0xBFFF = {-# SCC readMBC1Cartridge #-}
                        case (bankingMode, mbc1Config) of
@@ -69,7 +70,7 @@ writeMBC1Cartridge cart addr byte
                                 then cart { bankingMode = AdvancedBanking }
                                 else cart { bankingMode = SimpleBanking }
 
-writeMBC1Cartridge cart@(MBC1Cartridge { mbc1RAM = Just ram, ramEnabled = True, secondaryBank, bankingMode, mbc1Config }) addr byte
+writeMBC1Cartridge cart@MBC1Cartridge { mbc1RAM = Just ram, ramEnabled = True, secondaryBank, bankingMode, mbc1Config } addr byte
     | addr >= 0xA000
     , addr <= 0xBFFF = {-# SCC writeMBC1Cartridge #-}
                        cart <$ case (bankingMode, mbc1Config) of

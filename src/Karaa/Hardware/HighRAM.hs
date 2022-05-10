@@ -1,15 +1,13 @@
-module Karaa.Hardware.HighRAM ( HighRAM(), makeHighRAM, HasHighRAM(..)
+module Karaa.Hardware.HighRAM ( HighRAM(), makeHighRAM
                               , readHighRAM, writeHighRAM
                               ) where
 
 import Control.Applicative       ( empty )
-import Control.Lens.Combinators  ( use )
-import Control.Lens.Lens         ( Lens' )
-import Control.Monad.State.Class ( MonadState )
-import Karaa.Types.MaybeT        ( MaybeT )
 import Data.Word                 ( Word8, Word16 )
 
+import Karaa.Types.MaybeT        ( MaybeT )
 import Karaa.Types.Memory        ( RAM, MonadRAM(..) )
+import Karaa.Core.Monad.Base (KaraaBase)
 
 newtype HighRAM = HighRAM RAM
                 deriving (Show)
@@ -17,27 +15,20 @@ newtype HighRAM = HighRAM RAM
 makeHighRAM :: (MonadRAM m) => m HighRAM
 makeHighRAM = HighRAM <$> newRAM 0x80
 
-class HasHighRAM s where
-    highRAM :: Lens' s HighRAM
-
-instance HasHighRAM HighRAM where
-    highRAM = id
-    {-# INLINE highRAM #-}
-
 --
 
-readHighRAM :: (MonadState s m, HasHighRAM s, MonadRAM m) => Word16 -> MaybeT m Word8
-readHighRAM addr 
+readHighRAM :: HighRAM -> Word16 -> MaybeT KaraaBase Word8
+readHighRAM (HighRAM ram) addr 
     | addr >= 0xFF80, addr <= 0xFFFE = {-# SCC readHighRAM #-}
-                                       use highRAM >>=
-        \(HighRAM ram) -> readRAM ram (addr - 0xFF80)
-    | otherwise                      = empty
+        readRAM ram (addr - 0xFF80)
+    | otherwise =
+        empty
 {-# INLINE readHighRAM #-}
 
-writeHighRAM :: (MonadState s m, HasHighRAM s, MonadRAM m) => Word16 -> Word8 -> m ()
-writeHighRAM addr byte
+writeHighRAM :: HighRAM -> Word16 -> Word8 -> KaraaBase ()
+writeHighRAM (HighRAM ram) addr byte
     | addr >= 0xFF80, addr <= 0xFFFE = {-# SCC writeHighRAM #-}
-                                       use highRAM >>=
-        \(HighRAM ram) -> writeRAM ram (addr - 0xFF80) byte
-    | otherwise                      = return ()
+        writeRAM ram (addr - 0xFF80) byte
+    | otherwise =
+        return ()
 {-# INLINE writeHighRAM #-}

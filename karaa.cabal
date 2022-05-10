@@ -36,6 +36,7 @@ common language
                      , RecordWildCards
                      , ScopedTypeVariables
                      , StandaloneDeriving
+                     , TupleSections
                      , TypeApplications
                      , UndecidableInstances
                      , ViewPatterns
@@ -53,6 +54,7 @@ library
   import:              language
 
   exposed-modules:     Karaa.Core.Monad
+                     , Karaa.Core.Monad.Base
                      , Karaa.CPU
                      , Karaa.CPU.Execution
                      , Karaa.CPU.Instructions.Decode
@@ -76,14 +78,17 @@ library
                      , Karaa.Hardware.Timer
                      , Karaa.Hardware.WorkRAM
                      , Karaa.Types.BitInByte
+                     , Karaa.Types.Hardware
+                     , Karaa.Types.HardwareStatus
                      , Karaa.Types.MaybeT
                      , Karaa.Types.Memory
-                     , Karaa.Types.RLEStream
+                     , Karaa.Types.Scheduled
+                     , Karaa.Types.Ticks
                      , Karaa.Util.ByteLenses
                      , Karaa.Util.Hex
 
   build-depends:       base           >= 4.14      && < 5
-                     , transformers   >= 0.5.6.2   && < 0.6 
+                     , transformers   >= 0.5.6.2   && < 0.6
                      , mtl           ^>= 2.2.2
                      , exceptions    ^>= 0.10.4
                      , bytestring     >= 0.10.12.1 && < 0.12
@@ -93,6 +98,7 @@ library
                      , prettyprinter ^>= 1.7.1
                      , megaparsec    ^>= 9.2.0
                      , bits-extra    ^>= 0.0.2.0
+                     , torsor        ^>= 0.1
   hs-source-dirs:      src
 
   build-tool-depends:  markdown-unlit:markdown-unlit ^>= 0.5.1

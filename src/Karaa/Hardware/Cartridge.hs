@@ -1,52 +1,39 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use newtype instead of data" #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-module Karaa.Hardware.Cartridge ( Cartridge(), HasCartridge(..)
-                                , CartridgeLoadError(..), loadCartridgeFromByteString
-                                , readCartridge, writeCartridge, tickCartridge
+module Karaa.Hardware.Cartridge ( Cartridge()
+                                , CartridgeLoadError(..)
+                                , loadCartridgeFromByteString
                                 ) where
 
-import           Control.Lens.Combinators         ( use, assign )
-import           Control.Lens.Lens                ( Lens' )
-import           Karaa.Types.MaybeT               ( MaybeT(..) )
-import           Control.Monad.State.Class        ( MonadState )
+import           Control.Monad                    ( forever )
 import qualified Data.ByteString                  as BS
-import           Data.Word                        ( Word8, Word16 )
 
 import           Karaa.Hardware.Cartridge.Header
 import           Karaa.Hardware.Cartridge.Mappers
-import           Karaa.Types.Memory
+import           Karaa.Types.Hardware             ( Hardware(..), HardwareStatus(..) )
+import           Karaa.Types.Scheduled            ( statefulYield )
 
-data Cartridge = ROMOnlyCartridge !ROMOnlyCartridge
-               | MBC1Cartridge    !MBC1Cartridge
+data Cartridge = ROMOnlyCartridge {-# UNPACK #-} !ROMOnlyCartridge
+               | MBC1Cartridge    {-# UNPACK #-} !MBC1Cartridge
                deriving (Show)
-
-class HasCartridge s where
-    cartridge :: Lens' s Cartridge
-
-instance HasCartridge Cartridge where
-    cartridge = id
-    {-# INLINE cartridge #-}
 
 --
 
-readCartridge :: (MonadState s m, HasCartridge s, MonadRAM m) => Word16 -> MaybeT m Word8
-readCartridge addr = use cartridge >>= \case
-    ROMOnlyCartridge roc  -> readROMOnlyCartridge roc addr
-    MBC1Cartridge    mbc1 -> readMBC1Cartridge mbc1 addr 
-{-# INLINE readCartridge #-}
+instance Hardware Cartridge where
+    readHardware (ROMOnlyCartridge cart) =
+        readROMOnlyCartridge cart
+    readHardware (MBC1Cartridge cart) =
+        readMBC1Cartridge cart
 
-writeCartridge :: (MonadState s m, HasCartridge s, MonadRAM m) => Word16 -> Word8 -> m ()
-writeCartridge addr byte = use cartridge >>= \case
-    ROMOnlyCartridge _    -> return ()
-    MBC1Cartridge    mbc1 -> assign cartridge . MBC1Cartridge =<< writeMBC1Cartridge mbc1 addr byte
-{-# INLINE writeCartridge #-}
+    writeHardware cart@(ROMOnlyCartridge _) _ _ =
+        return (cart, Nothing)
+    writeHardware (MBC1Cartridge mbc1) addr byte = do
+        mbc1' <- writeMBC1Cartridge mbc1 addr byte
+        return (MBC1Cartridge mbc1', Nothing)
 
-tickCartridge :: (MonadState s m, HasCartridge s) => m ()
-tickCartridge = use cartridge >>= \case
-    ROMOnlyCartridge _ -> return ()
-    MBC1Cartridge    _ -> return ()
-{-# INLINE tickCartridge #-}
+    -- Why is this using the 'Hardware' interface? Because MBC3s with RTC in
+    -- honest RTC emulation mode will need it.
+    emulateHardware = forever $
+        statefulYield $ \cart ->
+            return (Disabled, cart)
 
 --
 
@@ -59,12 +46,14 @@ loadCartridgeFromByteString :: BS.ByteString                       -- ^ A bytest
                             -> Maybe BS.ByteString                 -- ^ If 'Just', a bytestring containing the contents of the ROM's associated RAM
                             -> Either CartridgeLoadError Cartridge
 loadCartridgeFromByteString rom mRAM = do
-    header <- maybeToEither InvalidHeader $ parseHeader rom
+    header@CartridgeHeader { mapperInfo } <- maybeToEither InvalidHeader $ parseHeader rom
     
-    case mapperInfo header of
-        ROMOnly  -> maybeToEither UnsupportedMapperConfiguration $ ROMOnlyCartridge <$> makeROMOnlyCartridge header rom
-        MBC1 _ _ -> maybeToEither UnsupportedMapperConfiguration $ MBC1Cartridge    <$> makeMBC1Cartridge header rom 
-        _       -> Left UnsupportedMapper
+    case mapperInfo of
+        ROMOnly  -> maybeToEither UnsupportedMapperConfiguration $
+            ROMOnlyCartridge <$> makeROMOnlyCartridge header rom
+        MBC1 _ _ -> maybeToEither UnsupportedMapperConfiguration $
+            MBC1Cartridge <$> makeMBC1Cartridge header rom mRAM
+        _        -> Left UnsupportedMapper
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither l Nothing  = Left l

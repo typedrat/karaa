@@ -18,6 +18,7 @@ import           System.IO
 import           Karaa.Core.Monad
 import           Karaa.CPU
 import           Karaa.CPU.Instructions.Decode
+import           Karaa.CPU.Interrupts
 import           Karaa.CPU.Registers
 import           Karaa.CPU.State
 import           Karaa.Hardware.Cartridge
@@ -27,8 +28,11 @@ import           Karaa.Hardware.State
 import           Karaa.Hardware.Timer
 import           Karaa.Hardware.WorkRAM
 import           Karaa.Util.Hex
+import Karaa.Types.Hardware (HardwareDevice(DisabledDevice))
+import Karaa.Core.Monad.Base (KaraaBase(runKaraaBase))
+import Karaa.Types.Ticks (zeroTicks)
 
-type KaraaREPL = HaskelineT (StateT (EmulatorState, Word8) IO)
+type KaraaREPL = HaskelineT (StateT (EmulatorState, Word8) KaraaBase)
 
 main :: IO ()
 main = forceDecoderTables
@@ -52,18 +56,25 @@ runRepl path = do
         Left InvalidHeader                  -> putStrLn "The cartridge header is invalid."
         Left UnsupportedMapper              -> putStrLn "We do not (yet!) support emulating cartridges using this mapper."
         Left UnsupportedMapperConfiguration -> putStrLn "The mapper is supported, but the configuration isn't."
-        Right cart -> void $ do
+        Right cart -> runKaraaBaseREPL $ do
             hram <- makeHighRAM
             wram <- makeWorkRAM
             
             let serialPort = makeSerialPort putCharSerialCallback
-                hwState = HardwareState cart hram serialPort initialTimerState wram
+                hwState = HardwareState (DisabledDevice cart) 
+                                        hram
+                                        (DisabledDevice serialPort)
+                                        (DisabledDevice initialTimerState)
+                                        wram
                 emuState = EmulatorState initialCPUState hwState
 
             flip runStateT (emuState, 0x00) $ do
                 evalRepl prompt (commands logFile) monitorOptions optionPrefix Nothing (Word $ \_ -> return []) (return ()) (return Exit)
 
     hClose logFile
+
+runKaraaBaseREPL :: KaraaBase a -> IO ()
+runKaraaBaseREPL action = void $ runKaraaBase action zeroTicks initialIRQState
 
 prompt :: MultiLine -> KaraaREPL String
 prompt _ = pure "γβ> "

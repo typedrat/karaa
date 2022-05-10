@@ -1,14 +1,12 @@
-module Karaa.Hardware.WorkRAM ( WorkRAM(), makeWorkRAM, HasWorkRAM(..)
+module Karaa.Hardware.WorkRAM ( WorkRAM(), makeWorkRAM
                               , readWorkRAM, writeWorkRAM
                               ) where
 
 import Control.Applicative       ( empty )
-import Control.Lens.Combinators  ( use )
-import Control.Lens.Lens         ( Lens' )
-import Control.Monad.State.Class ( MonadState )
-import Karaa.Types.MaybeT        ( MaybeT )
 import Data.Word                 ( Word8, Word16 )
 
+import Karaa.Core.Monad.Base     ( KaraaBase )
+import Karaa.Types.MaybeT        ( MaybeT )
 import Karaa.Types.Memory        ( RAM, MonadRAM(..) )
 
 newtype WorkRAM = DMGWorkRAM RAM
@@ -17,35 +15,30 @@ newtype WorkRAM = DMGWorkRAM RAM
 makeWorkRAM :: (MonadRAM m) => m WorkRAM
 makeWorkRAM = DMGWorkRAM <$> newRAM 0x2000
 
-class HasWorkRAM s where
-    workRAM :: Lens' s WorkRAM
-
-instance HasWorkRAM WorkRAM where
-    workRAM = id
-    {-# INLINE workRAM #-}
-
 --
 
-readWorkRAM :: (MonadState s m, HasWorkRAM s, MonadRAM m) => Word16 -> MaybeT m Word8
-readWorkRAM addr 
+readWorkRAM :: WorkRAM -> Word16 -> MaybeT KaraaBase Word8
+readWorkRAM wram addr 
     -- Echo RAM:
     | addr >= 0xE000, addr <= 0xFDFF = {-# SCC readWorkRAM #-}
-                                       readWorkRAM (addr - 0x2000)
+        readWorkRAM wram (addr - 0x2000)
     -- Directly addressed work RAM.
     | addr >= 0xC000, addr <= 0xDFFF = {-# SCC readWorkRAM #-}
-                                       use workRAM >>=
-        \(DMGWorkRAM ram) -> readRAM ram (addr - 0xC000)
-    | otherwise                      = empty
+        case wram of
+            DMGWorkRAM ram -> readRAM ram (addr - 0xC000)
+    | otherwise =
+        empty
 {-# INLINE readWorkRAM #-}
 
-writeWorkRAM :: (MonadState s m, HasWorkRAM s, MonadRAM m) => Word16 -> Word8 -> m ()
-writeWorkRAM addr byte
+writeWorkRAM :: WorkRAM -> Word16 -> Word8 -> KaraaBase ()
+writeWorkRAM wram addr byte
     -- Echo RAM:
     | addr >= 0xE000, addr <= 0xFDFF = {-# SCC writeWorkRAM #-}
-                                       writeWorkRAM (addr - 0x2000) byte
+        writeWorkRAM wram (addr - 0x2000) byte
     -- Directly addressed work RAM.
     | addr >= 0xC000, addr <= 0xDFFF = {-# SCC writeWorkRAM #-}
-                                       use workRAM >>=
-        \(DMGWorkRAM ram) -> writeRAM ram (addr - 0xC000) byte
-    | otherwise                      = return ()
+        case wram of
+            (DMGWorkRAM ram) -> writeRAM ram (addr - 0xC000) byte
+    | otherwise =
+        return ()
 {-# INLINE writeWorkRAM #-}
