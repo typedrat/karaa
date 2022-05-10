@@ -43,8 +43,6 @@ common language
   other-extensions:    OverloadedLists
 
   ghc-options:         -O2 -Wall
-                       -flate-dmd-anal -fspec-constr-count=50
-                       -fexpose-all-unfoldings -fspecialize-aggressively
 
 source-repository head
   type: git

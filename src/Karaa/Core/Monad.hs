@@ -1,9 +1,6 @@
 module Karaa.Core.Monad ( Karaa(..), readAddr, writeAddr, tick, EmulatorState(..) ) where
 
-import Control.Lens.Combinators      ( use )
 import Control.Lens.Lens             ( lens )
-import Control.Monad                 ( replicateM_ )
-import Control.Monad.Trans           ( lift )
 import Control.Monad.IO.Class        ( MonadIO )
 import Control.Monad.State.Strict    ( MonadState(..), StateT(..) )
 import Data.Word                     ( Word8, Word16 )
@@ -55,25 +52,31 @@ newtype Karaa a = Karaa { runKaraa :: StateT EmulatorState KaraaBase a }
                                  , MonadIO
                                  )
 
-liftBase :: KaraaBase a -> Karaa a
-liftBase = Karaa . lift
+liftReader :: (HardwareState -> KaraaBase a) -> Karaa a
+liftReader f = Karaa $ StateT $ \emu@(EmulatorState _cpu hw) -> do
+    val <- f hw
+    return (val, emu)
+{-# SCC liftReader #-}
 
 liftState :: (HardwareState -> KaraaBase HardwareState) -> Karaa ()
 liftState f = Karaa $ StateT $ \(EmulatorState cpu hw) -> do
     hw' <- f hw
     return ((), EmulatorState cpu hw')
+{-# SCC liftState #-}
 
 readAddr :: Word16 -> Karaa Word8
-readAddr addr = {-# SCC "readAddr" #-}
-    do
-        hw <- use hardwareState
-        liftBase (readHardware hw addr)
+readAddr addr = liftReader (`readHardware` addr)
+{-# SCC readAddr #-}
 
 writeAddr :: Word16 -> Word8 -> Karaa ()
-writeAddr addr byte = {-# SCC "writeAddr" #-}
-    liftState (\hw -> writeHardware hw addr byte)
+writeAddr addr byte = liftState (\hw -> writeHardware hw addr byte)
+{-# SCC writeAddr #-}
 
 -- | Advance the hardware simulation by one full φ cycle (4 @CLK@ cycles).
 tick :: Karaa ()
-tick = {-# SCC "tick" #-}
-       replicateM_ 4 (liftState tickHardware)
+tick = liftState $ \hw0 -> do
+           hw1 <- tickHardware hw0
+           hw2 <- tickHardware hw1
+           hw3 <- tickHardware hw2
+           tickHardware hw3
+{-# SCC tick #-}

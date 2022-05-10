@@ -38,7 +38,7 @@ readDevice (DisabledDevice hw)    = readHardware hw
 writeDevice :: (Hardware hw) => HardwareDevice hw -> Word16 -> Word8 -> KaraaBase (HardwareDevice hw)
 writeDevice (EnabledDevice hw nextActivation sched) addr byte =
     writeHardware hw addr byte >>= \(hw', status) ->
-        case status of 
+        case status of
             Just (Enabled deltaT) -> do
                 ticks <- getClock
                 return $ EnabledDevice hw' (add deltaT ticks) sched
@@ -77,10 +77,10 @@ emulateDevice dev@(DisabledDevice _) = return dev
 devicePending :: HardwareDevice hw -> Ticks -> Bool
 devicePending (EnabledDevice _ nextActivation _) ticks = nextActivation <= ticks
 devicePending (DisabledDevice _)                 _     = False
-{-# INLINE devicePending #-}
+{-# SCC devicePending #-}
 
 emulateIfPending :: (Hardware hw) => Ticks -> HardwareDevice hw -> KaraaBase (HardwareDevice hw)
 emulateIfPending ticks dev
     | devicePending dev ticks = emulateDevice dev
     | otherwise               = return dev
-{-# INLINE emulateIfPending #-}
+{-# SCC emulateIfPending #-}

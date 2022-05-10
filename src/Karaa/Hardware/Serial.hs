@@ -76,8 +76,8 @@ instance Hardware SerialPort where
         let port' = port { serialData = byte }
         return (port', Nothing)
     writeHardware port 0xFF02 byte = do
-        let transferInProgress = byte ^. bitAt 7
-            clockSource = byte ^. bitAt 0 . clockSourceBit
+        let !transferInProgress = byte ^. bitAt 7
+            !clockSource = byte ^. bitAt 0 . clockSourceBit
             port' = port { transferInProgress, clockSource }
             status
                 | transferInProgress
