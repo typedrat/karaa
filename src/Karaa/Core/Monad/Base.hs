@@ -1,9 +1,9 @@
-module Karaa.Core.Monad.Base ( MonadEmulatorBase(..), KaraaBase(..) ) where
+module Karaa.Core.Monad.Base ( MonadEmulatorBase(..), KaraaBase, runKaraaBase ) where
 
 import Control.Monad.IO.Class        ( MonadIO(..) )
-import Control.Monad.Catch           
+import Control.Monad.Catch           ( MonadCatch(..), MonadMask(..), MonadThrow(..) )           
 import Control.Monad.Trans           ( lift )
-import Control.Monad.State.Strict    ( StateT )
+import Control.Monad.State.Strict    ( StateT, evalStateT, get, put, modify' )
 import Torsor                        ( Torsor(..) )
 
 import Karaa.CPU.Interrupts.Internal ( IRQState, MonadInterrupt(..) )
@@ -31,79 +31,26 @@ instance (MonadEmulatorBase m) => MonadEmulatorBase (StateT s m) where
 
 --
 
-newtype KaraaBase a = KaraaBase { runKaraaBase :: Ticks -> IRQState -> IO (Ticks, IRQState, a) }
+data KaraaBaseState = KaraaBaseState { monotonicClock :: {-# UNPACK #-} !Ticks
+                                     , irqState       :: {-# UNPACK #-} !IRQState
+                                     }
+                    deriving (Show)
 
-instance Functor KaraaBase where
-    fmap f base = KaraaBase $ \ticks irq -> do
-        (!ticks', !irq', x) <- runKaraaBase base ticks irq
-        return (ticks', irq', f x)
-    {-# INLINE fmap #-}
+newtype KaraaBase a = KaraaBase (StateT KaraaBaseState IO a)
+                    deriving newtype ( Functor, Applicative, Monad
+                                     , MonadIO
+                                     , MonadThrow, MonadCatch, MonadMask
+                                     )
 
-instance Applicative KaraaBase where
-    pure x = KaraaBase $ \ticks irq ->
-        pure (ticks, irq, x)
-    {-# INLINE pure #-}
-
-    KaraaBase mF <*> KaraaBase mX = KaraaBase $ \ticks irq -> do
-        (!ticks', !irq', f) <- mF ticks irq
-        (!ticks'', !irq'', x) <- mX ticks' irq'
-        return (ticks'', irq'', f x)
-    {-# INLINE (<*>) #-}
-
-instance Monad KaraaBase where
-    mX >>= mF = KaraaBase $ \ticks irq -> do
-        (!ticks', !irq', x) <- runKaraaBase mX ticks irq
-        runKaraaBase (mF x) ticks' irq'
-    {-# INLINE (>>=) #-}
-
-instance MonadIO KaraaBase where
-    liftIO :: IO a -> KaraaBase a
-    liftIO m = KaraaBase $ \ticks irq ->
-        (ticks, irq, ) <$> m
-
-instance MonadThrow KaraaBase where
-    throwM e = KaraaBase $ \_ _ ->
-        throwM e
-
-instance MonadCatch KaraaBase where
-    catch m handler = KaraaBase $ \ticks irq ->
-        catch (runKaraaBase m ticks irq) (\e -> runKaraaBase (handler e) ticks irq)
-
-instance MonadMask KaraaBase where
-    mask action = KaraaBase $ \ticks irq -> 
-        mask $ \innerMask ->
-            runKaraaBase (action $ wrapMask innerMask) ticks irq
-
-    uninterruptibleMask action = KaraaBase $ \ticks irq ->
-        uninterruptibleMask $ \innerMask ->
-            runKaraaBase (action $ wrapMask innerMask) ticks irq
-
-    generalBracket acquire release use = KaraaBase $ \ticks irq -> do
-        ((_, _, b), (!ticks''', !irq''', c)) <- generalBracket
-            (runKaraaBase acquire ticks irq)
-            (\(ticks', irq', resource) exitCase -> case exitCase of
-                ExitCaseSuccess (ticks'', irq'', b) ->
-                    runKaraaBase (release resource (ExitCaseSuccess b)) ticks'' irq''
-                ExitCaseException e ->
-                    runKaraaBase (release resource $ ExitCaseException e) ticks' irq'
-                ExitCaseAbort ->
-                    runKaraaBase (release resource ExitCaseAbort) ticks' irq'
-            )
-            (\(ticks', irq', resource) -> runKaraaBase (use resource) ticks' irq')
-        return (ticks''', irq''', (b, c))
-
-wrapMask :: (forall t. IO t -> IO t) -> (KaraaBase a -> KaraaBase a)
-wrapMask innerMask action = KaraaBase $ \ticks irq ->
-    innerMask (runKaraaBase action ticks irq)
-
+runKaraaBase :: KaraaBase a -> Ticks -> IRQState -> IO a
+runKaraaBase (KaraaBase m) ticks irqState = evalStateT m (KaraaBaseState ticks irqState)
 
 instance MonadInterrupt KaraaBase where
-    getIRQState = KaraaBase $ \ticks irq ->
-        return (ticks, irq, irq)
+    getIRQState = KaraaBase $ irqState <$> get
     {-# INLINE getIRQState #-}
 
-    modifyIRQState f = KaraaBase $ \ticks irq ->
-        return (ticks, f irq, ())
+    modifyIRQState f = KaraaBase $ modify' $
+        \st@KaraaBaseState { irqState } -> st { irqState = f irqState }
     {-# INLINE modifyIRQState #-}
 
 instance MonadRAM KaraaBase where
@@ -114,11 +61,12 @@ instance MonadRAM KaraaBase where
     rawWriteRAM ram addr byte = liftIO $ rawWriteRAM ram addr byte
 
 instance MonadEmulatorBase KaraaBase where
-    getClock = KaraaBase $ \ticks irq ->
-        return (ticks, irq, ticks)
+    getClock = KaraaBase $ monotonicClock <$> get
     {-# INLINE getClock #-}
   
-    advanceClock deltaT = KaraaBase $ \ticks irq -> do
-        let ticks' = add deltaT ticks
-        return (ticks', irq, ticks')
+    advanceClock deltaT = KaraaBase $ do
+        st@KaraaBaseState { monotonicClock } <- get
+        let monotonicClock' = add deltaT monotonicClock
+        put $ st { monotonicClock = monotonicClock' }
+        return monotonicClock'
     {-# INLINE advanceClock #-}

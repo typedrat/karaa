@@ -28,9 +28,9 @@ import           Karaa.Hardware.State
 import           Karaa.Hardware.Timer
 import           Karaa.Hardware.WorkRAM
 import           Karaa.Util.Hex
-import Karaa.Types.Hardware (HardwareDevice(DisabledDevice))
-import Karaa.Core.Monad.Base (KaraaBase(runKaraaBase))
-import Karaa.Types.Ticks (zeroTicks)
+import Karaa.Types.Hardware ( HardwareDevice(..) )
+import Karaa.Core.Monad.Base ( KaraaBase, runKaraaBase )
+import Karaa.Types.Ticks ( zeroTicks )
 
 type KaraaREPL = HaskelineT (StateT (EmulatorState, Word8) KaraaBase)
 
