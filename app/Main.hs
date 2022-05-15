@@ -29,7 +29,7 @@ import           Karaa.Hardware.Timer
 import           Karaa.Hardware.WorkRAM
 import           Karaa.Util.Hex
 import Karaa.Types.Hardware ( HardwareDevice(..) )
-import Karaa.Core.Monad.Base ( KaraaBase, runKaraaBase )
+import Karaa.Core.Monad.Base ( KaraaBase, runKaraaBase, MonadEmulatorBase (getClock) )
 import Karaa.Types.Ticks ( zeroTicks )
 
 type KaraaREPL = HaskelineT (StateT (EmulatorState, Word8) KaraaBase)
@@ -119,6 +119,8 @@ regsCommand = logStep stdout
 
 stateCommand :: Karaa ()
 stateCommand = do
+    liftIO $ putStr "monotonicClock: "
+    liftIO . print =<< getClock
     state <- get
     let state' = state & wideRegister PC -~ 1
     liftIO $ pPrint state'

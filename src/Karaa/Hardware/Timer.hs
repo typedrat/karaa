@@ -11,6 +11,7 @@ import           Karaa.CPU.Interrupts      ( triggerInterrupt, Interrupt( TimerI
 import           Karaa.Types.Ticks         ( Ticks, zeroTicks, DeltaT(..) )
 import           Karaa.Types.Hardware      ( Hardware(..), HardwareStatus(..) )
 import           Karaa.Types.Scheduled     ( statefulYield )
+import Debug.Trace
 
 --
 
@@ -46,32 +47,34 @@ instance Hardware Timer where
 
     writeHardware timer 0xFF04 _    = withUpdatedTimer timer $ \t ->
         let t' = t { systemTimer = 0 }
-        in (t', Just $ timerStatus t')
+        in (t', Just $ Reset 0)
     writeHardware timer 0xFF05 byte = withUpdatedTimer timer $ \t ->
         let t' = t { userTimer = fromIntegral byte }
-        in (t', Just $ timerStatus t')
-    writeHardware timer 0xFF06 byte = withUpdatedTimer timer $ \t ->
-        let t' = t { initialOffset = byte }
-        in (t', Nothing)
+        in (t', Just $ Reset 0)
+    writeHardware timer 0xFF06 byte = return $
+        let timer' = timer { initialOffset = byte }
+        in (timer', Nothing)
     writeHardware timer 0xFF07 byte = withUpdatedTimer timer $ \t ->
-        let t' = setTimerControlRegister byte t
-        in (t', Just $ timerStatus t')
+        let t'@Timer { enabled } = setTimerControlRegister byte t
+        in (t', 
+            if enabled then Just $ Reset 0
+                       else Just Disabled)
     writeHardware timer _ _ =
         return (timer, Nothing)
 
     emulateHardware = forever $ do
-        statefulYield $ \timer@Timer { initialOffset } -> do
-            let timer' = timer { userTimer = fromIntegral initialOffset }
-            return (timerStatus timer', timer')
+        statefulYield $ \timer -> do
+            return (timerStatus timer, timer)
         
         statefulYield $ \timer -> do
             ticks <- getClock 
             let timer' = updateTimer timer ticks
             return (Enabled 4, timer')
         
-        statefulYield $ \timer -> do
+        statefulYield $ \timer@Timer { initialOffset } -> do
+            let timer' = timer { userTimer = fromIntegral initialOffset }
             triggerInterrupt TimerInterrupt
-            return (Enabled 4, timer)
+            return (Enabled 4, timer')
 
 withUpdatedTimer ::(MonadEmulatorBase m) => Timer -> (Timer -> a) -> m a
 withUpdatedTimer timer f = f . updateTimer timer <$> getClock
@@ -86,19 +89,17 @@ updateTimer timer@Timer{..} ticks
         disabledTimer = timer { systemTimer = fromIntegral wideSystemTimer', lastUpdated = ticks }
 
         wideUserTimer = fromIntegral userTimer
-        wideUserTimer' = wideUserTimer + rawDeltaT (deltaT `div` prescalerPeriod prescaler)
-        enabledTimer = disabledTimer { systemTimer = fromIntegral wideUserTimer' }
+        wideUserTimer' = wideUserTimer + (rawDeltaT deltaT `div` fromIntegral (prescalerPeriod prescaler))
+        enabledTimer = disabledTimer { userTimer = fromIntegral wideUserTimer' }
 
         deltaT = difference ticks lastUpdated
 
 timerStatus :: Timer -> HardwareStatus
-timerStatus Timer { enabled = True, .. } = Enabled systemTicksToNextEvent
+timerStatus Timer { enabled = True, .. } = Enabled (untilFirstUserTick + ticksUntilNextInterrupt * period)
     where
-        nextUserTickAt = nextMultipleOf prescaler systemTimer
-        systemTicksToNextUserTick = nextUserTickAt - systemTimer
-        userTicksToNextEvent = 0xFF - userTimer
-        systemTicksToNextEvent = fromIntegral systemTicksToNextUserTick 
-                               + prescalerPeriod prescaler * fromIntegral userTicksToNextEvent
+        untilFirstUserTick = fromIntegral $ prescalerPeriod prescaler - (systemTimer .&. prescalerModulusBitmask prescaler)
+        ticksUntilNextInterrupt = 0xFF - fromIntegral userTimer
+        period = fromIntegral $ prescalerPeriod prescaler
 timerStatus Timer { enabled = False } = Disabled
 
 nextMultipleOf :: TimerPrescaler -> Word16 -> Word16
@@ -125,7 +126,7 @@ prescalerModulusBitmask Prescaler16   = 0b0000_0000_0000_1111
 prescalerModulusBitmask Prescaler64   = 0b0000_0000_0011_1111
 prescalerModulusBitmask Prescaler256  = 0b0000_0000_1111_1111
 
-prescalerPeriod :: TimerPrescaler -> DeltaT
+prescalerPeriod :: TimerPrescaler -> Word16
 prescalerPeriod Prescaler1024 = 1024
 prescalerPeriod Prescaler16   = 16
 prescalerPeriod Prescaler64   = 64

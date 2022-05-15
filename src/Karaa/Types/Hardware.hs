@@ -24,8 +24,11 @@ data HardwareDevice hw = EnabledDevice  !hw {-# UNPACK #-} !Ticks !(Scheduled hw
                        | DisabledDevice !hw
 
 instance (Show hw) => Show (HardwareDevice hw) where
-    showsPrec d (EnabledDevice hw _ _) = showParen (d > 10) $
-        showString "EnabledDevice " . showsPrec 11 hw
+    showsPrec d (EnabledDevice hw ticks _) = showParen (d > 10) $
+          showString "EnabledDevice "
+        . showsPrec 11 hw
+        . showString " "
+        . showsPrec 11 ticks
 
     showsPrec d (DisabledDevice hw) = showParen (d > 10) $
         showString "DisabledDevice " . showsPrec 11 hw
