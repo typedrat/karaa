@@ -11,7 +11,6 @@ import           Karaa.CPU.Interrupts      ( triggerInterrupt, Interrupt( TimerI
 import           Karaa.Types.Ticks         ( Ticks, zeroTicks, DeltaT(..) )
 import           Karaa.Types.Hardware      ( Hardware(..), HardwareStatus(..) )
 import           Karaa.Types.Scheduled     ( statefulYield )
-import Debug.Trace
 
 --
 
